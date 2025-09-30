@@ -108,6 +108,10 @@ const postModel = require('./models/post');
 const communicationModel = require('./models/communication');
 const dbConnection = require("./config/db");
 const dataModel = require('./models/dataModel');
+const governmentModel = require('./models/government');
+const researcherModel = require('./models/researcher');
+const ngoModel = require('./models/ngo');
+const researchPostModel = require('./models/researchPost');
 
 // Mock data for demonstration
 const mockData = {
@@ -566,35 +570,79 @@ app.post('/signup', async (req, res) => {
     const { userType } = req.body;
     const saltRounds = 10;
 
-    if (userType && userType !== 'public') {
-      return res.status(403).send('Official signup is disabled');
+    if (!userType || (userType !== 'public' && userType !== 'government')) {
+      return res.status(403).send('Only public or government signup is allowed');
     }
 
-    const {
-      fullName, mobile, email, state, district, village,
-      password
-    } = req.body;
+    if (userType === 'public') {
+      const { fullName, mobile, email, state, district, village, password } = req.body;
 
-    // Check existing (by email if provided)
-    if (email) {
-      const existing = await generalModel.findOne({ userEmail: email });
-      if (existing) {
-        return res.status(409).send('Account already exists with this email');
+      // Check existing (by email if provided)
+      if (email) {
+        const existing = await generalModel.findOne({ userEmail: email });
+        if (existing) {
+          return res.status(409).send('Account already exists with this email');
+        }
       }
+
+      const hashed = await bcrypt.hash(password, saltRounds);
+      const doc = new generalModel({
+        name: fullName,
+        phoneNo: mobile ? Number(mobile) : undefined,
+        userEmail: email || undefined,
+        state,
+        district,
+        Area: village,
+        password: hashed
+      });
+      await doc.save();
+      return res.redirect('/login');
     }
 
-    const hashed = await bcrypt.hash(password, saltRounds);
-    const doc = new generalModel({
-      name: fullName,
-      phoneNo: mobile ? Number(mobile) : undefined,
-      userEmail: email || undefined,
-      state,
-      district,
-      Area: village,
-      password: hashed
-    });
-    await doc.save();
-    return res.redirect('/login');
+    // Government signup
+    if (userType === 'government') {
+      const { email, mobile, state, district, password, confirmPassword } = req.body;
+      if (!email || !mobile || !state || !district || !password || !confirmPassword) {
+        return res.status(400).send('Missing required fields');
+      }
+      if (String(password) !== String(confirmPassword)) {
+        return res.status(400).send('Passwords do not match');
+      }
+      const mobileRegex = /^[6-9]\d{9}$/;
+      if (!mobileRegex.test(String(mobile))) {
+        return res.status(400).send('Invalid mobile number');
+      }
+
+      const exists = await governmentModel.findOne({ email });
+      if (exists) return res.status(409).send('Government account already exists with this email');
+
+      // Generate unique GOV ID
+      function genGovId() {
+        const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+        let s = 'GOV';
+        for (let i = 0; i < 6; i++) s += chars.charAt(Math.floor(Math.random() * chars.length));
+        return s;
+      }
+      let newId = null;
+      for (let i = 0; i < 6; i++) {
+        const candidate = genGovId();
+        const clash = await governmentModel.findOne({ id: candidate });
+        if (!clash) { newId = candidate; break; }
+      }
+      if (!newId) return res.status(500).send('Failed to generate unique ID');
+
+      const hashed = await bcrypt.hash(password, saltRounds);
+      const gov = new governmentModel({
+        email,
+        id: newId,
+        phone: Number(mobile),
+        state: state || undefined,
+        district: district || undefined,
+        password: hashed,
+      });
+      await gov.save();
+      return res.redirect('/login?govId=' + encodeURIComponent(newId));
+    }
   } catch (err) {
     console.error('Signup error:', err);
     return res.status(500).send('Internal server error');
@@ -834,6 +882,16 @@ app.post('/community-post/:id/assign', requireLogin, requireRole(['master']), as
 function generateOfficerId(length = 8) {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
   let out = '';
+  for (let i = 0; i < length; i++) {
+    out += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return out;
+}
+
+// Generate prefixed unique-style ID e.g., GOV/NGO/SCI + random alphanumeric
+function generatePrefixedId(prefix = 'ID', length = 6) {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let out = String(prefix || 'ID');
   for (let i = 0; i < length; i++) {
     out += chars.charAt(Math.floor(Math.random() * chars.length));
   }
@@ -1221,6 +1279,74 @@ app.post('/login', async (req, res) => {
 
       req.session.user = { role: 'official', email: user.userEmail || null, employeeId: user.id };
       return res.json({ success: true, redirect: '/dashboard' });
+    } else if (type === 'government') {
+      const employeeId = String(req.body.employeeId || req.body.officialEmployeeId || req.body.governmentEmployeeId || '').trim();
+      const password = req.body.password;
+
+      if (employeeId) {
+        const prefix = employeeId.slice(0,3).toUpperCase();
+        if (prefix === 'SCI') {
+          const user = await researcherModel.findOne({ id: employeeId });
+          if (!user) return res.status(401).json({ success: false, message: 'Invalid credentials (researcher not found)' });
+          const ok = await bcrypt.compare(password, user.password || '');
+          if (!ok) return res.status(401).json({ success: false, message: 'Invalid credentials' });
+          req.session.user = { role: 'researcher', email: user.email || null, researcherId: String(user._id), employeeId };
+          return res.json({ success: true, redirect: '/dashboard' });
+        } else if (prefix === 'GOV') {
+          const user = await governmentModel.findOne({ id: employeeId });
+          if (!user) return res.status(401).json({ success: false, message: 'Invalid credentials (government not found)' });
+          const ok = await bcrypt.compare(password, user.password || '');
+          if (!ok) return res.status(401).json({ success: false, message: 'Invalid credentials' });
+          req.session.user = { role: 'government', email: user.email || null, governmentId: String(user._id), employeeId };
+          return res.json({ success: true, redirect: '/data-plotting' });
+        } else if (prefix === 'NGO') {
+          const user = await ngoModel.findOne({ id: employeeId });
+          if (!user) return res.status(401).json({ success: false, message: 'Invalid credentials (NGO not found)' });
+          const ok = await bcrypt.compare(password, user.password || '');
+          if (!ok) return res.status(401).json({ success: false, message: 'Invalid credentials' });
+          req.session.user = { role: 'ngo', email: user.email || null, ngoId: String(user._id), employeeId };
+          return res.json({ success: true, redirect: '/dashboard' });
+        } else {
+          // Admins and Master Admin
+          if (employeeId === MASTER_ID && password === MASTER_PASSWORD) {
+            req.session.user = { role: 'master', email: null, employeeId: MASTER_ID };
+            return res.json({ success: true, redirect: '/dashboard' });
+          }
+          const user = await officialModel.findOne({ id: employeeId });
+          if (!user) return res.status(401).json({ success: false, message: 'Invalid credentials (admin/officer not found)' });
+          const ok = await bcrypt.compare(password, user.password || '');
+          if (!ok) return res.status(401).json({ success: false, message: 'Invalid credentials' });
+          req.session.user = { role: 'official', email: user.userEmail || null, employeeId: user.id };
+          return res.json({ success: true, redirect: '/dashboard' });
+        }
+      } else {
+        // Fallback: legacy email login for government user (for transition safety)
+        const email = String(req.body.email || '').trim();
+        const user = await governmentModel.findOne({ email });
+        if (!user) return res.status(401).json({ success: false, message: 'Invalid credentials' });
+        const ok = await bcrypt.compare(password, user.password || '');
+        if (!ok) return res.status(401).json({ success: false, message: 'Invalid credentials' });
+        req.session.user = { role: 'government', email: user.email, governmentId: String(user._id) };
+        return res.json({ success: true, redirect: '/data-plotting' });
+      }
+    } else if (type === 'researcher') {
+      const email = String(req.body.email || '').trim();
+      const password = req.body.password;
+      const user = await researcherModel.findOne({ email });
+      if (!user) return res.status(401).json({ success: false, message: 'Invalid credentials' });
+      const ok = await bcrypt.compare(password, user.password || '');
+      if (!ok) return res.status(401).json({ success: false, message: 'Invalid credentials' });
+      req.session.user = { role: 'researcher', email: user.email, researcherId: String(user._id) };
+      return res.json({ success: true, redirect: '/dashboard' });
+    } else if (type === 'ngo') {
+      const email = String(req.body.email || '').trim();
+      const password = req.body.password;
+      const user = await ngoModel.findOne({ email });
+      if (!user) return res.status(401).json({ success: false, message: 'Invalid credentials' });
+      const ok = await bcrypt.compare(password, user.password || '');
+      if (!ok) return res.status(401).json({ success: false, message: 'Invalid credentials' });
+      req.session.user = { role: 'ngo', email: user.email, ngoId: String(user._id) };
+      return res.json({ success: true, redirect: '/dashboard' });
     } else {
       const email = req.body.publicEmail;
       const password = req.body.password;
@@ -1237,6 +1363,157 @@ app.post('/login', async (req, res) => {
     console.error('Login error:', err);
     return res.status(500).json({ success: false, message: 'Internal server error' });
   }
+});
+
+// Government Body: Data Plotting page
+app.get('/data-plotting', requireLogin, requireRole(['government']), async (req, res) => {
+  try {
+    const language = req.query.lang || 'en';
+    const agg = await dataModel.aggregate([
+      { $group: { _id: null, totalCases: { $sum: { $ifNull: ['$Cases', 0] } }, totalDeaths: { $sum: { $ifNull: ['$Deaths', 0] } } } }
+    ]);
+    const totalCases = (agg && agg[0] && agg[0].totalCases) ? agg[0].totalCases : 0;
+
+    let riskLevel = 'Low';
+    if (totalCases > 200000) riskLevel = 'High';
+    else if (totalCases > 50000) riskLevel = 'Medium';
+
+    res.render('data-plotting', {
+      title: 'Data Plotting',
+      language,
+      activeTab: 'data-plotting',
+      stats: { totalCases, riskLevel }
+    });
+  } catch (err) {
+    console.error('data-plotting error:', err);
+    const language = req.query.lang || 'en';
+    res.render('data-plotting', {
+      title: 'Data Plotting',
+      language,
+      activeTab: 'data-plotting',
+      stats: { totalCases: 0, riskLevel: 'Low' }
+    });
+  }
+});
+
+// Government Body: User Management page (NGO + Researcher)
+app.get('/user-management', requireLogin, requireRole(['government']), (req, res) => {
+  const language = req.query.lang || 'en';
+  res.render('user-management', { title: 'User Management', language, activeTab: 'user-management' });
+});
+
+// Government Body: Research Posts listing
+app.get('/research-posts', requireLogin, requireRole(['government']), async (req, res) => {
+  try {
+    const language = req.query.lang || 'en';
+    const posts = await researchPostModel.find({}).sort({ createdAt: -1 }).lean();
+    res.render('research-posts', { title: 'Research Posts', language, activeTab: 'research-posts', posts });
+  } catch (e) {
+    console.error('research-posts error', e);
+    res.render('research-posts', { title: 'Research Posts', language: req.query.lang || 'en', activeTab: 'research-posts', posts: [] });
+  }
+});
+
+// APIs for NGO management (Government only)
+app.get('/api/ngos', requireLogin, requireRole(['government']), async (req, res) => {
+  try { const list = await ngoModel.find({}).sort({ createdAt: -1 }).lean(); res.json({ success: true, list }); } catch (e) { res.status(500).json({ success: false }); }
+});
+app.post('/api/ngos', requireLogin, requireRole(['government']), async (req, res) => {
+  try {
+    const { name, email, registrationNo, focusAreas, state, district, password } = req.body;
+    if (!name || !email || !password) return res.status(400).json({ success: false, message: 'Missing fields' });
+    const exists = await ngoModel.findOne({ email });
+    if (exists) return res.status(409).json({ success: false, message: 'Email already exists' });
+
+    // Generate unique NGO ID
+    let newId = null;
+    for (let i = 0; i < 6; i++) {
+      const candidate = generatePrefixedId('NGO', 6);
+      const clash = await ngoModel.findOne({ id: candidate });
+      if (!clash) { newId = candidate; break; }
+    }
+    if (!newId) return res.status(500).json({ success: false, message: 'Failed to generate unique NGO ID' });
+
+    const hashed = await bcrypt.hash(String(password), 10);
+    const doc = new ngoModel({
+      id: newId,
+      name,
+      email,
+      registrationNo,
+      focusAreas: Array.isArray(focusAreas) ? focusAreas : String(focusAreas||'').split(',').map(s=>s.trim()).filter(Boolean),
+      state,
+      district,
+      password: hashed
+    });
+    await doc.save();
+    res.json({ success: true, id: String(doc._id), code: doc.id });
+  } catch (e) { console.error('ngo create', e); res.status(500).json({ success: false }); }
+});
+app.put('/api/ngos/:id', requireLogin, requireRole(['government']), async (req, res) => {
+  try {
+    const id = req.params.id;
+    const { name, email, registrationNo, focusAreas, state, district, password } = req.body;
+    const set = {};
+    if (name!=null) set.name = name;
+    if (email!=null) set.email = email;
+    if (registrationNo!=null) set.registrationNo = registrationNo;
+    if (typeof focusAreas !== 'undefined') set.focusAreas = Array.isArray(focusAreas)? focusAreas : String(focusAreas||'').split(',').map(s=>s.trim()).filter(Boolean);
+    if (state!=null) set.state = state;
+    if (district!=null) set.district = district;
+    if (password && String(password).trim()) set.password = await bcrypt.hash(String(password), 10);
+    const updated = await ngoModel.findByIdAndUpdate(id, { $set: set }, { new: true });
+    if (!updated) return res.status(404).json({ success: false, message: 'Not found' });
+    res.json({ success: true });
+  } catch (e) { console.error('ngo update', e); res.status(500).json({ success: false }); }
+});
+app.delete('/api/ngos/:id', requireLogin, requireRole(['government']), async (req, res) => {
+  try { const id = req.params.id; const del = await ngoModel.findByIdAndDelete(id); if (!del) return res.status(404).json({ success: false }); res.json({ success: true }); } catch (e) { res.status(500).json({ success: false }); }
+});
+
+// APIs for Researcher management (Government only)
+app.get('/api/researchers', requireLogin, requireRole(['government']), async (req, res) => {
+  try { const list = await researcherModel.find({}).sort({ createdAt: -1 }).lean(); res.json({ success: true, list }); } catch (e) { res.status(500).json({ success: false }); }
+});
+app.post('/api/researchers', requireLogin, requireRole(['government']), async (req, res) => {
+  try {
+    const { name, email, affiliation, state, district, password } = req.body;
+    if (!name || !email || !password) return res.status(400).json({ success: false, message: 'Missing fields' });
+    const exists = await researcherModel.findOne({ email });
+    if (exists) return res.status(409).json({ success: false, message: 'Email already exists' });
+
+    // Generate unique SCI ID
+    let newId = null;
+    for (let i = 0; i < 6; i++) {
+      const candidate = generatePrefixedId('SCI', 6);
+      const clash = await researcherModel.findOne({ id: candidate });
+      if (!clash) { newId = candidate; break; }
+    }
+    if (!newId) return res.status(500).json({ success: false, message: 'Failed to generate unique Researcher ID' });
+
+    const hashed = await bcrypt.hash(String(password), 10);
+    const doc = new researcherModel({ id: newId, name, email, affiliation, state, district, password: hashed });
+    await doc.save();
+    res.json({ success: true, id: String(doc._id), code: doc.id });
+  } catch (e) { console.error('researcher create', e); res.status(500).json({ success: false }); }
+});
+app.put('/api/researchers/:id', requireLogin, requireRole(['government']), async (req, res) => {
+  try {
+    const id = req.params.id;
+    const { name, email, affiliation, state, district, password } = req.body;
+    const set = {};
+    if (name!=null) set.name = name;
+    if (email!=null) set.email = email;
+    if (affiliation!=null) set.affiliation = affiliation;
+    if (state!=null) set.state = state;
+    if (district!=null) set.district = district;
+    if (password && String(password).trim()) set.password = await bcrypt.hash(String(password), 10);
+    const updated = await researcherModel.findByIdAndUpdate(id, { $set: set }, { new: true });
+    if (!updated) return res.status(404).json({ success: false, message: 'Not found' });
+    res.json({ success: true });
+  } catch (e) { console.error('researcher update', e); res.status(500).json({ success: false }); }
+});
+app.delete('/api/researchers/:id', requireLogin, requireRole(['government']), async (req, res) => {
+  try { const id = req.params.id; const del = await researcherModel.findByIdAndDelete(id); if (!del) return res.status(404).json({ success: false }); res.json({ success: true }); } catch (e) { res.status(500).json({ success: false }); }
 });
 
 app.post('/log-location', (req, res) => {

@@ -1,0 +1,211 @@
+<div class="page-header">
+  <h2 class="page-title">Government: User Management</h2>
+  <p class="subtitle">Manage NGO enlistment and Researcher accounts.</p>
+</div>
+
+<div class="dashboard-grid">
+  <section class="dashboard-card">
+    <h3 class="card-title">NGOs</h3>
+    <form id="ngoCreateForm" class="form-grid" onsubmit="return false;">
+      <div class="form-row"><label>Name</label><input type="text" name="name" required /></div>
+      <div class="form-row"><label>Email</label><input type="email" name="email" required /></div>
+      <div class="form-row"><label>Registration No</label><input type="text" name="registrationNo" /></div>
+      <div class="form-row"><label>Focus Areas (comma separated)</label><input type="text" name="focusAreas" /></div>
+      <div class="form-row"><label>State</label><input type="text" name="state" /></div>
+      <div class="form-row"><label>District</label><input type="text" name="district" /></div>
+      <div class="form-row"><label>Password</label><input type="password" name="password" required /></div>
+      <div class="form-actions"><button class="btn" id="ngoCreateBtn" type="submit">Add NGO</button></div>
+    </form>
+    <div id="ngoMsg" style="margin-top:0.5rem;"></div>
+    <div class="table-responsive" style="margin-top:1rem;">
+      <table class="table" style="width:100%;">
+        <thead><tr><th>ID</th><th>Name</th><th>Email</th><th>Reg No</th><th>Focus Areas</th><th>State</th><th>District</th><th>Actions</th></tr></thead>
+        <tbody id="ngoTbody"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="dashboard-card">
+    <h3 class="card-title">Researchers</h3>
+    <form id="researcherCreateForm" class="form-grid" onsubmit="return false;">
+      <div class="form-row"><label>Name</label><input type="text" name="name" required /></div>
+      <div class="form-row"><label>Email</label><input type="email" name="email" required /></div>
+      <div class="form-row"><label>Affiliation</label><input type="text" name="affiliation" /></div>
+      <div class="form-row"><label>State</label><input type="text" name="state" /></div>
+      <div class="form-row"><label>District</label><input type="text" name="district" /></div>
+      <div class="form-row"><label>Password</label><input type="password" name="password" required /></div>
+      <div class="form-actions"><button class="btn" id="researcherCreateBtn" type="submit">Add Researcher</button></div>
+    </form>
+    <div id="researcherMsg" style="margin-top:0.5rem;"></div>
+    <div class="table-responsive" style="margin-top:1rem;">
+      <table class="table" style="width:100%;">
+        <thead><tr><th>ID</th><th>Name</th><th>Email</th><th>Affiliation</th><th>State</th><th>District</th><th>Actions</th></tr></thead>
+        <tbody id="researcherTbody"></tbody>
+      </table>
+    </div>
+  </section>
+</div>
+
+<!-- Edit modal reused for NGO and Researcher -->
+<div id="editModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.4); align-items:center; justify-content:center;">
+  <div style="background:#fff; padding:1rem; border-radius:8px; width:100%; max-width:520px;">
+    <h3 style="margin-top:0;" id="editTitle">Edit</h3>
+    <form id="editForm" onsubmit="return false;">
+      <input type="hidden" name="type" />
+      <input type="hidden" name="id" />
+      <div class="form-row"><label>Name</label><input type="text" name="name" required /></div>
+      <div class="form-row"><label>Email</label><input type="email" name="email" required /></div>
+      <div class="form-row" id="affiliationRow" style="display:none;"><label>Affiliation</label><input type="text" name="affiliation" /></div>
+      <div class="form-row" id="registrationRow" style="display:none;"><label>Registration No</label><input type="text" name="registrationNo" /></div>
+      <div class="form-row" id="focusAreasRow" style="display:none;"><label>Focus Areas</label><input type="text" name="focusAreas" placeholder="comma separated" /></div>
+      <div class="form-row"><label>State</label><input type="text" name="state" /></div>
+      <div class="form-row"><label>District</label><input type="text" name="district" /></div>
+      <div class="form-row"><label>New Password (optional)</label><input type="password" name="password" /></div>
+      <div class="form-actions" style="display:flex; gap:0.5rem;">
+        <button class="btn" id="saveEditBtn" type="submit">Save</button>
+        <button class="btn" type="button" id="cancelEditBtn" style="background:#e5e7eb;">Cancel</button>
+      </div>
+    </form>
+    <div id="editMsg" style="margin-top:0.5rem;"></div>
+  </div>
+</div>
+
+<script>
+(async function(){
+  const ngoTbody = document.getElementById('ngoTbody');
+  const researcherTbody = document.getElementById('researcherTbody');
+
+  async function fetchList(url){
+    const res = await fetch(url, { cache: 'no-store' });
+    const json = await res.json();
+    if (!res.ok || json.success === false) throw new Error('Failed');
+    return json.list || [];
+  }
+
+  function renderNgoRow(n){
+    const tr = document.createElement('tr');
+    tr.dataset.id = n._id;
+    tr.innerHTML = `<td>${n.id||''}</td><td>${n.name}</td><td>${n.email}</td><td>${n.registrationNo||''}</td><td>${(n.focusAreas||[]).join(', ')}</td><td>${n.state||''}</td><td>${n.district||''}</td>
+      <td><button class="btn btn-small edit-btn" data-type="ngo">Edit</button>
+          <button class="btn btn-small" style="background:#dc2626;color:#fff;" data-type="ngo" data-action="delete">Delete</button></td>`;
+    return tr;
+  }
+  function renderResearcherRow(r){
+    const tr = document.createElement('tr');
+    tr.dataset.id = r._id;
+    tr.innerHTML = `<td>${r.id||''}</td><td>${r.name}</td><td>${r.email}</td><td>${r.affiliation||''}</td><td>${r.state||''}</td><td>${r.district||''}</td>
+      <td><button class="btn btn-small edit-btn" data-type="researcher">Edit</button>
+          <button class="btn btn-small" style="background:#dc2626;color:#fff;" data-type="researcher" data-action="delete">Delete</button></td>`;
+    return tr;
+  }
+
+  async function loadAll(){
+    ngoTbody.innerHTML = '<tr><td colspan="7">Loading...</td></tr>';
+    researcherTbody.innerHTML = '<tr><td colspan="6">Loading...</td></tr>';
+    try {
+      const [ngos, researchers] = await Promise.all([
+        fetchList('/api/ngos'),
+        fetchList('/api/researchers')
+      ]);
+      ngoTbody.innerHTML = '';
+      (ngos||[]).forEach(n => ngoTbody.appendChild(renderNgoRow(n)));
+      researcherTbody.innerHTML = '';
+      (researchers||[]).forEach(r => researcherTbody.appendChild(renderResearcherRow(r)));
+    } catch(e) {
+      ngoTbody.innerHTML = '<tr><td colspan="7">Failed to load NGOs</td></tr>';
+      researcherTbody.innerHTML = '<tr><td colspan="6">Failed to load Researchers</td></tr>';
+    }
+  }
+
+  // Create handlers
+  document.getElementById('ngoCreateForm').addEventListener('submit', async function(){
+    const msg = document.getElementById('ngoMsg');
+    msg.textContent = '';
+    const data = Object.fromEntries(new FormData(this).entries());
+    try {
+      const res = await fetch('/api/ngos', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(data) });
+      const json = await res.json();
+      if (!res.ok || json.success === false) throw new Error(json.message||'Failed');
+      this.reset();
+      await loadAll();
+      msg.style.color = '#065f46'; msg.textContent = 'NGO added. ID: ' + (json.code || '');
+      alert('NGO created. ID: ' + (json.code || ''));
+    } catch(e) { msg.style.color = '#991b1b'; msg.textContent = e.message || 'Failed'; }
+  });
+
+  document.getElementById('researcherCreateForm').addEventListener('submit', async function(){
+    const msg = document.getElementById('researcherMsg');
+    msg.textContent = '';
+    const data = Object.fromEntries(new FormData(this).entries());
+    try {
+      const res = await fetch('/api/researchers', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(data) });
+      const json = await res.json();
+      if (!res.ok || json.success === false) throw new Error(json.message||'Failed');
+      this.reset();
+      await loadAll();
+      msg.style.color = '#065f46'; msg.textContent = 'Researcher added. ID: ' + (json.code || '');
+      alert('Researcher created. ID: ' + (json.code || ''));
+    } catch(e) { msg.style.color = '#991b1b'; msg.textContent = e.message || 'Failed'; }
+  });
+
+  // Edit/Delete shared modal
+  const editModal = document.getElementById('editModal');
+  const editForm = document.getElementById('editForm');
+  const editMsg = document.getElementById('editMsg');
+  document.getElementById('cancelEditBtn').addEventListener('click', () => editModal.style.display = 'none');
+  document.addEventListener('click', async function(e){
+    const btn = e.target.closest('button');
+    if (!btn) return;
+    const row = e.target.closest('tr');
+    const id = row && row.dataset.id;
+    const type = btn.dataset.type;
+    const action = btn.dataset.action || 'edit';
+    if (!type) return;
+
+    if (action === 'delete') {
+      if (!confirm('Delete this entry?')) return;
+      const url = type === 'ngo' ? `/api/ngos/${id}` : `/api/researchers/${id}`;
+      try{ const res = await fetch(url, { method:'DELETE' }); const json = await res.json(); if (!res.ok || json.success===false) throw new Error('Failed'); row.remove(); } catch(e) { alert('Delete failed'); }
+      return;
+    }
+
+    // open edit modal
+    editMsg.textContent = '';
+    editForm.reset();
+    editForm.type.value = type;
+    editForm.id.value = id;
+    const isNgo = type === 'ngo';
+    document.getElementById('editTitle').textContent = isNgo ? 'Edit NGO' : 'Edit Researcher';
+    document.getElementById('affiliationRow').style.display = isNgo ? 'none' : '';
+    document.getElementById('registrationRow').style.display = isNgo ? '' : 'none';
+    document.getElementById('focusAreasRow').style.display = isNgo ? '' : 'none';
+
+    // Prefill
+    const cells = row.children;
+    editForm.name.value = cells[0].textContent.trim();
+    editForm.email.value = cells[1].textContent.trim();
+    if (isNgo) {
+      editForm.registrationNo.value = cells[2].textContent.trim();
+      editForm.focusAreas.value = cells[3].textContent.trim();
+      editForm.state.value = cells[4].textContent.trim();
+      editForm.district.value = cells[5].textContent.trim();
+    } else {
+      editForm.affiliation.value = cells[2].textContent.trim();
+      editForm.state.value = cells[3].textContent.trim();
+      editForm.district.value = cells[4].textContent.trim();
+    }
+
+    editModal.style.display = 'flex';
+  });
+
+  editForm.addEventListener('submit', async function(){
+    editMsg.textContent = '';
+    const data = Object.fromEntries(new FormData(editForm).entries());
+    const id = data.id; const type = data.type; delete data.id; delete data.type;
+    const url = type === 'ngo' ? `/api/ngos/${id}` : `/api/researchers/${id}`;
+    try { const res = await fetch(url, { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify(data) }); const json = await res.json(); if (!res.ok || json.success===false) throw new Error(json.message||'Failed'); editMsg.style.color = '#065f46'; editMsg.textContent = 'Saved'; await loadAll(); setTimeout(()=> editModal.style.display='none', 300); } catch(e) { editMsg.style.color = '#991b1b'; editMsg.textContent = e.message || 'Failed'; }
+  });
+
+  await loadAll();
+})();
+</script>

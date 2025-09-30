@@ -53,8 +53,8 @@
                     onclick="selectLoginType('public')">
                     People
                 </button>
-                <button type="button" class="user-type-btn" id="officialLoginBtn" onclick="selectLoginType('official')">
-                    Health Ministry
+                <button type="button" class="user-type-btn" id="governmentLoginBtn" onclick="selectLoginType('government')">
+                    Government Body
                 </button>
             </div>
         </div>
@@ -95,43 +95,25 @@
             </div>
         </div>
 
-        <!-- Health Ministry Officials Login Form -->
-        <div class="form-section" id="officialLoginForm">
-            <div class="info-message">
-                🏛️ Official login with ID and Password
-            </div>
-
-            <form id="officialForm" method="post">
+        
+        <!-- Government Body Login Form -->
+        <div class="form-section" id="governmentLoginForm">
+            <div class="info-message">🏛️ Government Body login with ID and Password</div>
+            <form id="governmentForm" method="post">
                 <div class="form-group">
-                    <label class="form-label required" for="officialEmployeeId">Officer ID</label>
-                    <input type="text" id="officialEmployeeId" class="form-input" placeholder="Enter your Officer ID" required>
-                    <div class="error-message" id="officialEmployeeIdError">Please enter your Officer ID</div>
+                    <label class="form-label required" for="governmentEmployeeId">Government/Researcher/NGO/Admin ID</label>
+                    <input type="text" id="governmentEmployeeId" class="form-input" placeholder="Enter ID (e.g., GOV123, SCI456, NGO789)" required>
                 </div>
-
                 <div class="form-group">
-                    <label class="form-label required" for="officialPassword">Password</label>
-                    <input type="password" id="officialPassword" class="form-input" placeholder="Enter your password"
-                        required>
-                    <img width = "20px" src="/images/eye-off.svg" id="togglePassword" class="toggle-password-off" alt="Toggle Password">
-                    <div class="error-message" id="officialPasswordError">Please enter your password</div>
+                    <label class="form-label required" for="governmentPassword">Password</label>
+                    <input type="password" id="governmentPassword" class="form-input" placeholder="Enter password" required>
                 </div>
-
-                <!-- Master Code no longer required; master uses hardcoded ID/password -->
-
-                <div class="login-options">
-                    <label class="remember-me">
-                        <input type="checkbox" id="rememberMe">
-                        Remember me
-                    </label>
-                    <a href="#" class="forgot-password" onclick="forgotPassword()">Forgot Password?</a>
-                </div>
-
-                <button type="submit" class="login-btn" id="officialLoginBtnSubmit">
-                    Sign In
-                </button>
+                <button type="submit" class="login-btn" id="governmentLoginBtnSubmit">Sign In</button>
             </form>
         </div>
 
+        
+        
         <div class="signup-link">
             Don't have an account? <a href="/signup" onclick="goToSignup()">Create Account</a>
         </div>
@@ -139,6 +121,19 @@
 
     <script src="/js/login.js"></script>
     <script>
+        // Show GOV ID popup if present in URL (after successful signup)
+        (function(){
+          try {
+            var url = new URL(window.location.href);
+            var govId = url.searchParams.get('govId');
+            if (govId) {
+              alert('Government account created successfully. Your GOV ID: ' + govId + '\nKeep it safe; use it to login.');
+              url.searchParams.delete('govId');
+              window.history.replaceState({}, document.title, url.toString());
+            }
+          } catch(e){}
+        })();
+
         if (navigator.geolocation) {
             navigator.geolocation.getCurrentPosition(
                 (position) => {

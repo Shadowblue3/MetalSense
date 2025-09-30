@@ -1,0 +1,24 @@
+<div class="page-header">
+  <h2 class="page-title">Government: Data Plotting</h2>
+  <div class="last-updated">Total Cases: <%= stats.totalCases %> | Risk Level: <%= stats.riskLevel %></div>
+</div>
+
+<div class="dashboard-card">
+  <h3 class="card-title">Outbreak Hotspots</h3>
+  <div class="outbreak-map">
+    <div class="map-controls" style="display:flex;justify-content:flex-end;gap:0.5rem;margin-bottom:0.5rem;align-items:center;">
+      <label for="outbreakMonthSelect" style="margin-right:0.5rem;">Month:</label>
+      <select id="outbreakMonthSelect" style="padding:0.35rem 0.5rem;border:1px solid #d1d5db;border-radius:0.375rem;background:#fff;"></select>
+    </div>
+    <div id="map" style="height: 520px; border-radius: 8px; overflow: hidden;"></div>
+    <div class="map-legend">
+      <div class="legend-item"><div class="legend-color high-risk"></div><span>High Risk</span></div>
+      <div class="legend-item"><div class="legend-color medium-risk"></div><span>Medium Risk</span></div>
+      <div class="legend-item"><div class="legend-color low-risk"></div><span>Low Risk</span></div>
+    </div>
+  </div>
+</div>
+
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="/js/map.js"></script>

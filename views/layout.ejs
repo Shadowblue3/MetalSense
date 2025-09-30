@@ -61,6 +61,7 @@
     <nav class="navigation">
         <div class="container">
             <div class="nav-items">
+                <% if (!user || (user && user.role !== 'government')) { %>
                 <a href="/dashboard?lang=<%= language %>" class="nav-item <%= activeTab === 'dashboard' ? 'active' : '' %>">
                     <i class="fas fa-chart-bar"></i>
                     <span><%= (user && user.role === 'general') ? 'Home' : 'Dashboard' %></span>
@@ -70,6 +71,7 @@
                     <i class="fas fa-biohazard"></i>
                     <span>Outbreak Prediction</span>
                 </a>
+                <% } %>
 
                 <% if (user && user.role === 'general') { %>
                 <a href="/report?lang=<%= language %>" class="nav-item <%= activeTab === 'report' ? 'active' : '' %>">
@@ -94,6 +96,21 @@
                 <a href="/communications?lang=<%= language %>" class="nav-item <%= activeTab === 'communications' ? 'active' : '' %>">
                     <i class="fas fa-comments"></i>
                     <span>Communications</span>
+                </a>
+                <% } %>
+
+                <% if (user && user.role === 'government') { %>
+                <a href="/data-plotting?lang=<%= language %>" class="nav-item <%= activeTab === 'data-plotting' ? 'active' : '' %>">
+                    <i class="fas fa-map"></i>
+                    <span>Data Plotting</span>
+                </a>
+                <a href="/user-management?lang=<%= language %>" class="nav-item <%= activeTab === 'user-management' ? 'active' : '' %>">
+                    <i class="fas fa-users-gear"></i>
+                    <span>User Management</span>
+                </a>
+                <a href="/research-posts?lang=<%= language %>" class="nav-item <%= activeTab === 'research-posts' ? 'active' : '' %>">
+                    <i class="fas fa-book"></i>
+                    <span>Research Posts</span>
                 </a>
                 <% } %>
 

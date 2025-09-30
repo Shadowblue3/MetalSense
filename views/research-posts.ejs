@@ -1,0 +1,25 @@
+<div class="page-header">
+  <h2 class="page-title">Government: Research Posts</h2>
+  <p class="subtitle">Browse latest research updates.</p>
+</div>
+
+<section class="dashboard-card">
+  <h3 class="card-title">Posts</h3>
+  <div id="postsContainer">
+    <% if ((posts||[]).length === 0) { %>
+      <div style="padding:0.75rem;">No posts found.</div>
+    <% } %>
+    <% (posts||[]).forEach(function(p){ %>
+      <article class="card" style="margin-bottom:0.75rem;">
+        <h4 style="margin:0 0 0.25rem 0;"> <%= p.title %> </h4>
+        <div style="font-size:0.85rem;color:#6b7280;">Posted on <%= new Date(p.createdAt).toLocaleString() %> by <%= p.authorName || p.authorEmail || 'Unknown' %></div>
+        <% if (p.abstract) { %>
+          <p style="margin-top:0.5rem;"><%= p.abstract %></p>
+        <% } %>
+        <% if (p.tags && p.tags.length) { %>
+          <div style="margin-top:0.35rem; font-size:0.85rem; color:#374151;">Tags: <%= p.tags.join(', ') %></div>
+        <% } %>
+      </article>
+    <% }) %>
+  </div>
+</section>

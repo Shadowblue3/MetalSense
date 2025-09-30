@@ -4,13 +4,15 @@ function selectLoginType(type) {
     currentLoginType = type;
     // Update buttons
     document.getElementById('publicLoginBtn').classList.toggle('active', type === 'public');
-    document.getElementById('officialLoginBtn').classList.toggle('active', type === 'official');
+    const govBtn = document.getElementById('governmentLoginBtn');
+    if (govBtn) govBtn.classList.toggle('active', type === 'government');
     // Show/hide forms
     document.getElementById('publicLoginForm').classList.toggle('active', type === 'public');
-    document.getElementById('officialLoginForm').classList.toggle('active', type === 'official');
+    const govFormSec = document.getElementById('governmentLoginForm');
+    if (govFormSec) govFormSec.classList.toggle('active', type === 'government');
     // Reset forms
     document.getElementById('publicForm').reset();
-    document.getElementById('officialForm').reset();
+    if (document.getElementById('governmentForm')) document.getElementById('governmentForm').reset();
     document.querySelectorAll('.error-message').forEach(error => error.style.display = 'none');
 }
 
@@ -21,18 +23,7 @@ function validatePublicLogin() {
     return email.length > 0 && password.length > 0;
 }
 
-function validateOfficialLogin() {
-    let isValid = true;
-    document.querySelectorAll('.error-message').forEach(error => { error.style.display = 'none'; });
-
-    const employeeId = document.getElementById('officialEmployeeId').value.trim();
-    if (!employeeId) { document.getElementById('officialEmployeeIdError').style.display = 'block'; isValid = false; }
-
-    const password = document.getElementById('officialPassword').value;
-    if (password.length < 1) { document.getElementById('officialPasswordError').style.display = 'block'; isValid = false; }
-
-    return isValid;
-}
+// remove official validation
 
 async function performLogin(payload) {
     const res = await fetch('/login', {
@@ -45,7 +36,7 @@ async function performLogin(payload) {
     if (data && data.success) {
         window.location.href = data.redirect || '/dashboard';
     } else {
-        alert('Login failed');
+        alert(data && data.message ? data.message : 'Login failed');
     }
 }
 
@@ -68,14 +59,14 @@ document.getElementById('publicForm').addEventListener('submit', async function(
     }
 });
 
-document.getElementById('officialForm').addEventListener('submit', async function(e) {
+if (document.getElementById('governmentForm')) {
+  document.getElementById('governmentForm').addEventListener('submit', async function(e){
     e.preventDefault();
-    if (validateOfficialLogin()) {
-        const employeeId = document.getElementById('officialEmployeeId').value.trim();
-        const password = document.getElementById('officialPassword').value;
-        await performLogin({ type: 'official', officialEmployeeId: employeeId, password });
-    }
-});
+    const employeeId = document.getElementById('governmentEmployeeId').value.trim();
+    const password = document.getElementById('governmentPassword').value;
+    await performLogin({ type: 'government', governmentEmployeeId: employeeId, password });
+  });
+}
 
 // Animate water drops
 function animateDrops() {
