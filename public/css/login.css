@@ -1,0 +1,468 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 50%, #2563eb 100%);
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    overflow-x: hidden;
+    padding: 20px 0;
+}
+
+/* Animated water drops */
+.water-drop {
+    position: absolute;
+    opacity: 0.1;
+    animation: float 6s ease-in-out infinite;
+}
+
+.drop1 {
+    top: 10%;
+    left: 10%;
+    animation-delay: 0s;
+}
+
+.drop2 {
+    top: 20%;
+    right: 15%;
+    animation-delay: 2s;
+}
+
+.drop3 {
+    bottom: 15%;
+    left: 20%;
+    animation-delay: 4s;
+}
+
+.drop4 {
+    bottom: 30%;
+    right: 10%;
+    animation-delay: 1s;
+}
+
+.drop5 {
+    top: 60%;
+    left: 5%;
+    animation-delay: 3s;
+}
+
+.drop6 {
+    top: 40%;
+    right: 5%;
+    animation-delay: 5s;
+}
+
+@keyframes float {
+
+    0%,
+    100% {
+        transform: translateY(0px) rotate(0deg);
+    }
+
+    50% {
+        transform: translateY(-20px) rotate(10deg);
+    }
+}
+
+.login-container {
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(10px);
+    border-radius: 20px;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+    padding: 40px;
+    width: 100%;
+    max-width: 450px;
+    position: relative;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    margin: 20px;
+}
+
+.logo-section {
+    text-align: center;
+    margin-bottom: 30px;
+}
+
+.logo-icon {
+    margin-bottom: 15px;
+    animation: ripple 3s ease-in-out infinite;
+}
+
+@keyframes ripple {
+
+    0%,
+    100% {
+        transform: scale(1);
+    }
+
+    50% {
+        transform: scale(1.05);
+    }
+}
+
+.logo-text {
+    color: #2563eb;
+    font-size: 28px;
+    font-weight: 700;
+    margin-bottom: 5px;
+}
+
+.logo-subtitle {
+    color: #64748b;
+    font-size: 14px;
+    font-weight: 400;
+    margin-bottom: 5px;
+}
+
+.page-title {
+    color: #2563eb;
+    font-size: 18px;
+    font-weight: 600;
+}
+
+.user-type-selector {
+    margin-bottom: 30px;
+}
+
+.user-type-title {
+    color: #2563eb;
+    font-weight: 600;
+    margin-bottom: 15px;
+    font-size: 16px;
+    text-align: center;
+}
+
+.user-type-buttons {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+}
+
+.user-type-btn {
+    flex: 1;
+    padding: 15px;
+    border: 2px solid #e2e8f0;
+    border-radius: 12px;
+    background: white;
+    color: #64748b;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-align: center;
+}
+
+.user-type-btn.active {
+    border-color: #2563eb;
+    background: #2563eb;
+    color: white;
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(37, 99, 235, 0.3);
+}
+
+.form-section {
+    display: none;
+}
+
+.form-section.active {
+    display: block;
+}
+
+.form-group {
+    margin-bottom: 20px;
+    position: relative;
+}
+
+.form-label {
+    display: block;
+    color: #2563eb;
+    font-weight: 600;
+    margin-bottom: 8px;
+    font-size: 14px;
+}
+
+.required::after {
+    content: ' *';
+    color: #ef4444;
+}
+
+.form-input {
+    width: 100%;
+    padding: 15px 20px;
+    border: 2px solid #e2e8f0;
+    border-radius: 12px;
+    font-size: 16px;
+    background: #fafafa;
+    transition: all 0.3s ease;
+    outline: none;
+}
+
+.form-input:focus {
+    border-color: #2563eb;
+    background: white;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+    transform: translateY(-2px);
+}
+
+.login-options {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 25px;
+    font-size: 14px;
+}
+
+.remember-me {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #64748b;
+}
+
+.remember-me input {
+    transform: scale(1.2);
+    accent-color: #2563eb;
+}
+
+.forgot-password {
+    color: #2563eb;
+    text-decoration: none;
+    font-weight: 600;
+    transition: color 0.3s ease;
+}
+
+.forgot-password:hover {
+    color: #1d4ed8;
+    text-decoration: underline;
+}
+
+.password-container {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.password-container input {
+  width: 100%;
+  padding-right: 40px; 
+}
+
+.toggle-password {
+  position: absolute;
+  right: 21px;
+  cursor: pointer;
+  height: 20px;
+  width: 20px;
+  top: 41px;
+}
+.toggle-password-off {
+  position: absolute;
+  right: 21px;
+  cursor: pointer;
+  height: 20px;
+  width: 20px;
+  top: 41px;
+}
+
+
+.login-btn {
+    width: 100%;
+    padding: 15px;
+    background: linear-gradient(45deg, #2563eb, #3b82f6);
+    color: white;
+    border: none;
+    border-radius: 12px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+    margin-bottom: 15px;
+}
+
+.login-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 25px rgba(37, 99, 235, 0.3);
+}
+
+.login-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.login-btn::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+    transition: left 0.5s;
+}
+
+.login-btn:hover::before {
+    left: 100%;
+}
+
+.otp-btn {
+    width: 100%;
+    padding: 15px;
+    background: linear-gradient(45deg, #10b981, #059669);
+    color: white;
+    border: none;
+    border-radius: 12px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    margin-bottom: 20px;
+}
+
+.otp-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 25px rgba(16, 185, 129, 0.3);
+}
+
+.divider {
+    text-align: center;
+    margin: 20px 0;
+    color: #64748b;
+    position: relative;
+}
+
+.divider::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: #e2e8f0;
+    z-index: 1;
+}
+
+.divider span {
+    background: rgba(255, 255, 255, 0.95);
+    padding: 0 15px;
+    position: relative;
+    z-index: 2;
+}
+
+.signup-link {
+    text-align: center;
+    margin-top: 20px;
+    color: #64748b;
+    font-size: 14px;
+}
+
+.signup-link a {
+    color: #2563eb;
+    text-decoration: none;
+    font-weight: 600;
+    transition: color 0.3s ease;
+}
+
+.signup-link a:hover {
+    color: #1d4ed8;
+    text-decoration: underline;
+}
+
+.error-message {
+    color: #ef4444;
+    font-size: 12px;
+    margin-top: 5px;
+    display: none;
+}
+
+.success-message {
+    background: #d1fae5;
+    color: #065f46;
+    padding: 10px 15px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    font-size: 14px;
+    display: none;
+}
+
+.info-message {
+    background: #dbeafe;
+    color: #1e40af;
+    padding: 10px 15px;
+    border-radius: 8px;
+    margin-bottom: 15px;
+    font-size: 13px;
+}
+
+.otp-section {
+    display: none;
+    background: #f8fafc;
+    padding: 20px;
+    border-radius: 12px;
+    margin-bottom: 20px;
+}
+
+.otp-section.active {
+    display: block;
+}
+
+.otp-input {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    margin: 15px 0;
+}
+
+.otp-digit {
+    width: 45px;
+    height: 45px;
+    border: 2px solid #e2e8f0;
+    border-radius: 8px;
+    text-align: center;
+    font-size: 18px;
+    font-weight: 600;
+    outline: none;
+    transition: all 0.3s ease;
+}
+
+.otp-digit:focus {
+    border-color: #2563eb;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+.resend-otp {
+    color: #2563eb;
+    cursor: pointer;
+    text-decoration: underline;
+    font-size: 14px;
+    text-align: center;
+    margin-top: 10px;
+}
+
+/* Responsive design */
+@media (max-width: 480px) {
+    .login-container {
+        margin: 10px;
+        padding: 30px 25px;
+    }
+
+    .user-type-buttons {
+        flex-direction: column;
+    }
+
+    .login-options {
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .logo-text {
+        font-size: 24px;
+    }
+}

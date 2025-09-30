@@ -1,0 +1,367 @@
+<style>
+  .alertContain {
+    display: flex;
+    justify-content: center;
+    padding: 20px;
+  }
+
+  .alertOfLocation {
+    padding: 5px;
+    /* border: 2px solid #f5a0a0; */
+    text-align: center;
+    width: 52vw;
+    font-weight: bolder;
+    font-size: 20px;
+    border-radius: 20px;
+    color: rgb(255, 0, 0);
+    /* background-color: rgba(255, 0, 0, 0.2); */
+    background: #fbdada;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    /* Blur */
+
+    /* Drop shadow */
+    filter: drop-shadow(2px 2px 7px red);
+    transition: all ease-in-out 0.2s;
+    animation: smoothScale 1.5s ease-in-out;
+    animation-iteration-count: 5; /* 👈 will run 3 times then stop */
+  }
+  /* .alertOfLocation:hover{
+    transform: scale(1.05);
+  } */
+    @keyframes smoothScale {
+      0%   { transform: scale(0.9); }
+      50%  { transform: scale(1.05); }
+      100% { transform: scale(0.9); }
+    }
+</style>
+<div class="page-header">
+  <h2 class="page-title">Community Post</h2>
+  <p class="page-subtitle">Create and share official guidance and updates for communities</p>
+</div>
+<div class="alertContain">
+  <div class="alertOfLocation">
+    Please Turn On Your Device Location Before Creating a Post
+  </div>
+</div>
+
+<div class="report-form-container">
+  <% if (typeof success !=='undefined' && success) { %>
+    <div
+      style="background:#e8f5e9;border:1px solid #2e7d32;color:#1b5e20;padding:12px 14px;border-radius:8px;margin:0 0 16px 0;display:flex;align-items:center;gap:8px;font-weight:600;">
+      <span class="fas fa-check-circle" aria-hidden="true"></span>
+      <span>The post is published successfully</span>
+    </div>
+    <% } %>
+      <form id="postForm" action="/report" method="POST" class="report-form" onsubmit="submitCommunityPost(event)">
+        <div class="form-grid">
+          <div class="form-group">
+            <label for="postTitle" class="form-label">
+              <i class="fas fa-heading"></i>
+              Title
+            </label>
+            <input type="text" id="postTitle" name="title" required class="form-input"
+              placeholder="Enter a clear title">
+          </div>
+
+          <div class="form-group">
+            <label for="stateSelect" class="form-label">
+              <i class="fas fa-flag"></i>
+              State
+            </label>
+            <select id="stateSelect" name="state" class="form-select" required>
+              <option value="">Select state</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="districtSelect" class="form-label">
+              <i class="fas fa-map-marked-alt"></i>
+              District
+            </label>
+            <select id="districtSelect" name="district" class="form-select" required>
+              <option value="">Select district</option>
+            </select>
+            <input type="text" id="districtOther" class="form-input" placeholder="Enter district"
+              style="display:none; margin-top: 8px;">
+            <input type="hidden" id="postRegion" name="region">
+          </div>
+        </div>
+
+        <div class="form-grid">
+          <div class="form-group">
+            <label for="locality" class="form-label">
+              <i class="fas fa-map-pin"></i>
+              Locality / Village
+            </label>
+            <input type="text" id="locality" name="locality" class="form-input" placeholder="Auto-detected locality">
+          </div>
+          <div class="form-group">
+            <label for="pinCode" class="form-label">
+              <i class="fas fa-mail-bulk"></i>
+              PIN Code
+            </label>
+            <input type="text" id="pinCode" name="pinCode" class="form-input" placeholder="Auto-detected PIN" readonly>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="locationDisplay" class="form-label">
+            <i class="fas fa-location-arrow"></i>
+            Location
+          </label>
+          <input type="text" id="locationDisplay" class="form-input" placeholder="Detecting location..." readonly>
+          <input type="hidden" id="latitude" name="latitude">
+          <input type="hidden" id="longitude" name="longitude">
+        </div>
+
+        <div class="form-group">
+          <label for="postBody" class="form-label">
+            <i class="fas fa-align-left"></i>
+            Message
+          </label>
+          <textarea id="postBody" name="body" rows="6" class="form-input" placeholder="Write the advisory or update..."
+            required></textarea>
+        </div>
+        <div class="form-group">
+          <label class="form-label">
+            <i class="fas fa-thermometer-half"></i>
+            Observed Symptoms
+          </label>
+          <div class="symptoms-grid">
+            <label class="symptom-checkbox">
+              <input type="checkbox" name="symptoms" value="diarrhea">
+              <span class="checkmark"></span>
+              Diarrhea
+            </label>
+            <label class="symptom-checkbox">
+              <input type="checkbox" name="symptoms" value="vomiting">
+              <span class="checkmark"></span>
+              Vomiting
+            </label>
+            <label class="symptom-checkbox">
+              <input type="checkbox" name="symptoms" value="fever">
+              <span class="checkmark"></span>
+              Fever
+            </label>
+            <label class="symptom-checkbox">
+              <input type="checkbox" name="symptoms" value="abdominalPain">
+              <span class="checkmark"></span>
+              Abdominal Pain
+            </label>
+            <label class="symptom-checkbox">
+              <input type="checkbox" name="symptoms" value="dehydration">
+              <span class="checkmark"></span>
+              Dehydration
+            </label>
+          </div>
+        </div>
+
+        <div class="form-grid">
+          <div class="form-group">
+            <label for="postType" class="form-label">
+              <i class="fas fa-tags"></i>
+              Type
+            </label>
+            <select id="postType" name="type" class="form-select" required>
+              <option value="advisory">Advisory</option>
+              <option value="alert">Alert</option>
+              <option value="update">Update</option>
+            </select>
+          </div>
+          <div class="form-grid">
+            <div class="form-group">
+              <label for="waterSource" class="form-label">
+                <i class="fas fa-tint"></i>
+                Water Source Used
+              </label>
+              <select id="waterSource" name="waterSource" required class="form-select">
+                <option value="">Select water source</option>
+                <option value="well">Community Well</option>
+                <option value="river">River/Stream</option>
+                <option value="pond">Pond/Lake</option>
+                <option value="tap">Municipal Tap</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-grid button-wrapper">
+            <div class="form-group">
+              <label for="affectedCount" class="form-label">
+                <div class="fas fa-users"></div>
+                Number of Affected People
+              </label>
+              <input type="number" id="affectedCount" name="affectedCount" required min="1"
+                class="form-input  button-wrapper" placeholder="0">
+
+            </div>
+          </div>
+
+          <!-- <div class="form-grid button-wrapper"> -->
+          <button type="submit" class="submit-btn">
+            <div class="fas fa-paper-plane"></div>
+            Publish Post
+          </button>
+          <!-- </div> -->
+      </form>
+</div>
+
+<script>
+  (function () {
+    function setLocation(lat, lon) {
+      var latInput = document.getElementById('latitude');
+      var lonInput = document.getElementById('longitude');
+      var display = document.getElementById('locationDisplay');
+      if (!latInput || !lonInput || !display) return;
+      latInput.value = lat;
+      lonInput.value = lon;
+      try { display.value = lat.toFixed(6) + ', ' + lon.toFixed(6); } catch (e) { display.value = lat + ', ' + lon; }
+    }
+
+    var display = document.getElementById('locationDisplay');
+    if (!display) return;
+
+    // State/District dropdown handling and reverse geocoding
+    var stateSelect = document.getElementById('stateSelect');
+    var districtSelect = document.getElementById('districtSelect');
+    var districtOther = document.getElementById('districtOther');
+    var regionHidden = document.getElementById('postRegion');
+    var postForm = document.getElementById('postForm');
+    var pinCodeInput = document.getElementById('pinCode');
+    var localityInput = document.getElementById('locality');
+
+    var STATES_IN_INDIA = [
+      'Andhra Pradesh', 'Arunachal Pradesh', 'Assam', 'Bihar', 'Chhattisgarh', 'Goa', 'Gujarat', 'Haryana', 'Himachal Pradesh', 'Jharkhand', 'Karnataka', 'Kerala', 'Madhya Pradesh', 'Maharashtra', 'Manipur', 'Meghalaya', 'Mizoram', 'Nagaland', 'Odisha', 'Punjab', 'Rajasthan', 'Sikkim', 'Tamil Nadu', 'Telangana', 'Tripura', 'Uttar Pradesh', 'Uttarakhand', 'West Bengal', 'Andaman and Nicobar Islands', 'Chandigarh', 'Dadra and Nagar Haveli and Daman and Diu', 'Delhi', 'Jammu and Kashmir', 'Ladakh', 'Lakshadweep', 'Puducherry'
+    ];
+
+    function populateStates() {
+      if (!stateSelect) return;
+      // Preserve first placeholder if exists
+      var placeholder = stateSelect.querySelector('option[value=""]');
+      stateSelect.innerHTML = '';
+      if (placeholder) stateSelect.appendChild(placeholder);
+      STATES_IN_INDIA.forEach(function (st) {
+        var opt = document.createElement('option');
+        opt.value = st;
+        opt.textContent = st;
+        stateSelect.appendChild(opt);
+      });
+    }
+
+    function setDistrictOptions(detectName) {
+      if (!districtSelect) return;
+      districtSelect.innerHTML = '';
+      var placeholder = document.createElement('option');
+      placeholder.value = '';
+      placeholder.textContent = 'Select district';
+      districtSelect.appendChild(placeholder);
+      if (detectName) {
+        var opt = document.createElement('option');
+        opt.value = detectName;
+        opt.textContent = detectName;
+        districtSelect.appendChild(opt);
+        districtSelect.value = detectName;
+      }
+      var other = document.createElement('option');
+      other.value = '__other__';
+      other.textContent = 'Other...';
+      districtSelect.appendChild(other);
+      toggleDistrictOther();
+    }
+
+    function toggleDistrictOther() {
+      if (!districtOther || !districtSelect) return;
+      var show = districtSelect.value === '__other__';
+      districtOther.style.display = show ? 'block' : 'none';
+      districtOther.required = show;
+    }
+
+    function updateRegionHidden() {
+      if (!regionHidden || !stateSelect || !districtSelect) return;
+      var state = stateSelect.value || '';
+      var district = districtSelect.value === '__other__' ? (districtOther.value || '') : (districtSelect.value || '');
+      regionHidden.value = (district && state) ? (district + ', ' + state) : (state || district || '');
+    }
+
+    if (stateSelect) {
+      populateStates();
+      stateSelect.addEventListener('change', function () {
+        setDistrictOptions(null);
+        updateRegionHidden();
+      });
+    }
+    if (districtSelect) {
+      districtSelect.addEventListener('change', function () {
+        toggleDistrictOther();
+        updateRegionHidden();
+      });
+    }
+    if (districtOther) {
+      districtOther.addEventListener('input', updateRegionHidden);
+    }
+    if (postForm) {
+      postForm.addEventListener('submit', updateRegionHidden);
+    }
+
+    function reverseGeocodeAndFill(lat, lon) {
+      if (!stateSelect || !districtSelect) return;
+      var url = 'https://nominatim.openstreetmap.org/reverse?format=json&lat=' + encodeURIComponent(lat) + '&lon=' + encodeURIComponent(lon) + '&zoom=14&addressdetails=1';
+      fetch(url, { headers: { 'Accept': 'application/json' } })
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+          var addr = data && data.address ? data.address : {};
+          var stateName = addr.state || addr.region || '';
+          var districtName = addr.state_district || addr.county || addr.district || addr.city_district || '';
+          var locality = addr.village || addr.town || addr.suburb || addr.neighbourhood || addr.hamlet || addr.city || '';
+          var postcode = addr.postcode || '';
+          if (pinCodeInput) pinCodeInput.value = postcode;
+          if (localityInput) localityInput.value = locality;
+          if (display) {
+            var parts = [];
+            if (locality) parts.push(locality);
+            if (districtName) parts.push(districtName);
+            if (stateName) parts.push(stateName);
+            if (postcode) parts.push(postcode);
+            display.value = parts.filter(Boolean).join(', ');
+          }
+          if (stateName && stateSelect) {
+            var match = null;
+            for (var i = 0; i < stateSelect.options.length; i++) {
+              var opt = stateSelect.options[i];
+              if (opt.value && opt.value.toLowerCase() === stateName.toLowerCase()) { match = opt.value; break; }
+              if (!match && stateName.toLowerCase().includes('delhi') && opt.value === 'Delhi') { match = opt.value; }
+              if (!match && stateName.toLowerCase().includes('dadra') && opt.value.indexOf('Dadra') === 0) { match = opt.value; }
+            }
+            if (match) stateSelect.value = match;
+          }
+          setDistrictOptions(districtName);
+          updateRegionHidden();
+        })
+        .catch(function () { /* ignore reverse geocode errors */ });
+    }
+
+    if ('geolocation' in navigator) {
+      navigator.geolocation.getCurrentPosition(function (pos) {
+        var lat = pos && pos.coords ? pos.coords.latitude : null;
+        var lon = pos && pos.coords ? pos.coords.longitude : null;
+        if (lat != null && lon != null) {
+          setLocation(lat, lon);
+          reverseGeocodeAndFill(lat, lon);
+          // Optional: also log to backend for audit
+          try {
+            fetch('/log-location', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ latitude: lat, longitude: lon })
+            });
+          } catch (_) { }
+        } else {
+          display.value = 'Unable to detect location';
+        }
+      }, function (err) {
+        display.value = 'Location permission denied or unavailable';
+        console.error('Geolocation error:', err);
+      });
+    } else {
+      display.value = 'Geolocation not supported';
+    }
+  })();
+
+</script>

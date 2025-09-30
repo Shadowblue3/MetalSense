@@ -1,0 +1,155 @@
+<style>
+    .module-image iframe {
+        width: 53vw;
+    }
+</style>
+<div class="page-header centered">
+    <h2 class="page-title">Health Education & Awareness</h2>
+    <p class="page-subtitle">Learn how to prevent water-borne diseases</p>
+</div>
+
+<div class="education-layout">
+    <div class="modules-sidebar">
+        <h3 class="sidebar-title">Learning Modules</h3>
+        <div class="modules-list">
+            <a href="/education?module=hygiene&lang=<%= language %>"
+                class="module-item <%= activeModule === 'hygiene' ? 'active' : '' %>">
+                <div class="module-content">
+                    <h4 class="module-title">Hand Hygiene & Sanitation</h4>
+                    <p class="module-description">Proper handwashing techniques and sanitation practices</p>
+                    <div class="module-meta">
+                        <span class="duration">15 min</span>
+                        <span class="status completed">Completed</span>
+                    </div>
+                </div>
+            </a>
+
+            <a href="/education?module=water&lang=<%= language %>"
+                class="module-item <%= activeModule === 'water' ? 'active' : '' %>">
+                <div class="module-content">
+                    <h4 class="module-title">Safe Water Practices</h4>
+                    <p class="module-description">Water purification and storage methods</p>
+                    <div class="module-meta">
+                        <span class="duration">20 min</span>
+                    </div>
+                </div>
+            </a>
+
+            <a href="/education?module=symptoms&lang=<%= language %>"
+                class="module-item <%= activeModule === 'symptoms' ? 'active' : '' %>">
+                <div class="module-content">
+                    <h4 class="module-title">Symptom Recognition</h4>
+                    <p class="module-description">Early identification and when to seek help</p>
+                    <div class="module-meta">
+                        <span class="duration">10 min</span>
+                    </div>
+                </div>
+            </a>
+        </div>
+    </div>
+
+    <div class="module-content-area">
+        <div class="module-header">
+            <h3 class="module-active-title">
+                <% if (activeModule==='hygiene' ) { %>Hand Hygiene & Sanitation<% } %>
+                        <% if (activeModule==='water' ) { %>Safe Water Practices<% } %>
+                                <% if (activeModule==='symptoms' ) { %>Symptom Recognition<% } %>
+            </h3>
+            <div class="module-actions">
+                <button class="action-btn primary">
+                    <i class="fas fa-play"></i>
+                    Start Module
+                </button>
+                <button class="action-btn secondary">
+                    <i class="fas fa-download"></i>
+                    Download
+                </button>
+            </div>
+        </div>
+
+        <div class="module-body">
+            <% if (activeModule==='hygiene' ) { %>
+                <div class="module-image">
+                    <!-- <img src="https://images.pexels.com/photos/1020012/pexels-photo-1020012.jpeg" 
+                     alt="Hand washing demonstration" class="content-image"> -->
+                    <iframe width="560" height="315"
+                        src="https://www.youtube.com/embed/UitUdTjhZz8?start=0&end=42&autoplay=1&controls=0&rel=0&modestbranding=1"
+                        frameborder="0" allow="autoplay" allowfullscreen>
+                    </iframe>
+                </div>
+                <div class="module-text">
+                    <p>Proper hand hygiene is the most effective way to prevent water-borne diseases. Follow these
+                        essential steps:</p>
+                    <ul class="steps-list">
+                        <li>Wet hands with clean, running water (warm or cold)</li>
+                        <li>Apply soap and lather by rubbing hands together</li>
+                        <li>Scrub all surfaces for at least 20 seconds</li>
+                        <li>Rinse thoroughly and dry with a clean towel</li>
+                    </ul>
+                </div>
+                <% } %>
+
+                    <% if (activeModule==='water' ) { %>
+                        <div class="module-image">
+                            <img src="/images/Handwash.jpg"
+                                alt="Water purification" class="content-image">
+                        </div>
+                        <div class="module-text">
+                            <p>Safe water practices can prevent most water-borne infections. Use these methods to ensure
+                                water safety:</p>
+                            <ul class="steps-list">
+                                <li>Boil water for at least 1 minute before drinking</li>
+                                <li>Use water purification tablets as directed</li>
+                                <li>Store treated water in clean, covered containers</li>
+                            </ul>
+                        </div>
+                        <% } %>
+
+                            <% if (activeModule==='symptoms' ) { %>
+                                <div class="module-image">
+                                    <img src="https://images.pexels.com/photos/263402/pexels-photo-263402.jpeg"
+                                        alt="Healthcare consultation" class="content-image">
+                                </div>
+                                <div class="module-text">
+                                    <p>Early recognition of symptoms can save lives. Watch for these warning signs:</p>
+                                    <div class="warning-box">
+                                        <h4><i class="fas fa-exclamation-triangle"></i> Seek immediate medical help if
+                                            you notice:</h4>
+                                        <ul class="warning-list">
+                                            <li>Severe dehydration (dry mouth, no tears, dizziness)</li>
+                                            <li>Blood in stool or vomit</li>
+                                            <li>High fever with severe abdominal pain</li>
+                                        </ul>
+                                    </div>
+                                </div>
+                                <% } %>
+        </div>
+
+        <div class="community-impact">
+            <div class="impact-header">
+                <i class="fas fa-users"></i>
+                <h4>Community Impact</h4>
+            </div>
+            <div class="impact-stats">
+                <div class="impact-stat">
+                    <div class="impact-number">2,847</div>
+                    <div class="impact-label">People Trained</div>
+                </div>
+                <div class="impact-stat">
+                    <div class="impact-number">156</div>
+                    <div class="impact-label">Villages Reached</div>
+                </div>
+                <div class="impact-stat">
+                    <div class="impact-number">89%</div>
+                    <div class="impact-label">Disease Reduction</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        initializeEducation();
+    });
+</script>

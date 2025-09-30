@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aquaflow - Smart Health Surveillance System</title>
+    <link rel="icon" type="image/png" href="/images/logo.png">
+    <link rel="stylesheet" href="/css/style.css">
+    <link rel="stylesheet" href="/css/components.css">
+    <link rel="stylesheet" href="/css/community-post.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        /* Hide Google Translate banner and branding */
+        .goog-te-banner-frame { display: none !important; }
+        body { top: 0 !important; }
+        .goog-logo-link { display: none !important; }
+        .goog-te-gadget { height: 0 !important; overflow: hidden !important; }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <div class="container">
+            <div class="header-content">
+                <div class="logo-section">
+                    <img width = "100vw" src="/images/logo.png" alt="" srcset="">
+                    <div class="logo-text">
+                        <h1 class="system-title">Smart Health Surveillance</h1>
+                        <p class="system-subtitle">Early Warning System for Water-borne Diseases</p>
+                    </div>
+                </div>
+                
+                <div class="header-controls">
+                    <div class="language-selector">
+                        <i class="fas fa-globe"></i>
+                        <select id="languageSelect" onchange="changeLanguage(this.value)">
+                            <option value="en" <%= language === 'en' ? 'selected' : '' %>>English</option>
+                            <option value="hi" <%= language === 'hi' ? 'selected' : '' %>>हिंदी</option>
+                            <option value="as" <%= language === 'as' ? 'selected' : '' %>>অসমীয়া</option>
+                            <option value="bn" <%= language === 'bn' ? 'selected' : '' %>>বাংলা</option>
+                            <option value="mr" <%= language === 'mr' ? 'selected' : '' %>>मराठी</option>
+                            <option value="te" <%= language === 'te' ? 'selected' : '' %>>తెలుగు</option>
+                            <option value="ta" <%= language === 'ta' ? 'selected' : '' %>>தமிழ்</option>
+                            <option value="gu" <%= language === 'gu' ? 'selected' : '' %>>ગુજરાતી</option>
+                            <option value="ur" <%= language === 'ur' ? 'selected' : '' %>>اردو</option>
+                            <option value="kn" <%= language === 'kn' ? 'selected' : '' %>>ಕನ್ನಡ</option>
+                            <option value="or" <%= language === 'or' ? 'selected' : '' %>>ଓଡ଼ିଆ</option>
+                            <option value="ml" <%= language === 'ml' ? 'selected' : '' %>>മലയാളം</option>
+                        </select>
+                    </div>
+                    <% if (user) { %>
+                    <a href="/logout" class="btn-logout" style="margin-left:1rem;display:inline-flex;align-items:center;gap:0.5rem;padding:0.5rem 0.75rem;border:1px solid #d1d5db;border-radius:0.375rem;color:#111827;background:#fff;text-decoration:none;">
+                        <i class="fas fa-sign-out-alt"></i>
+                        <span>Logout</span>
+                    </a>
+                    <% } %>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <nav class="navigation">
+        <div class="container">
+            <div class="nav-items">
+                <a href="/dashboard?lang=<%= language %>" class="nav-item <%= activeTab === 'dashboard' ? 'active' : '' %>">
+                    <i class="fas fa-chart-bar"></i>
+                    <span><%= (user && user.role === 'general') ? 'Home' : 'Dashboard' %></span>
+                </a>
+
+                <a href="/outbreak-prediction?lang=<%= language %>" class="nav-item <%= activeTab === 'prediction' ? 'active' : '' %>">
+                    <i class="fas fa-biohazard"></i>
+                    <span>Outbreak Prediction</span>
+                </a>
+
+                <% if (user && user.role === 'general') { %>
+                <a href="/report?lang=<%= language %>" class="nav-item <%= activeTab === 'report' ? 'active' : '' %>">
+                    <i class="fas fa-file-alt"></i>
+                    <span>Community Report</span>
+                </a>
+                <a href="/education?lang=<%= language %>" class="nav-item <%= activeTab === 'education' ? 'active' : '' %>">
+                    <i class="fas fa-graduation-cap"></i>
+                    <span>Education</span>
+                </a>
+                <% } %>
+
+                <% if (user && user.role === 'official') { %>
+                <a href="/community-post?lang=<%= language %>" class="nav-item <%= activeTab === 'community-post' ? 'active' : '' %>">
+                    <i class="fas fa-newspaper"></i>
+                    <span>Community Post</span>
+                </a>
+                <a href="/water-quality?lang=<%= language %>" class="nav-item <%= activeTab === 'water' ? 'active' : '' %>">
+                    <i class="fas fa-tint"></i>
+                    <span>Water Quality</span>
+                </a>
+                <a href="/communications?lang=<%= language %>" class="nav-item <%= activeTab === 'communications' ? 'active' : '' %>">
+                    <i class="fas fa-comments"></i>
+                    <span>Communications</span>
+                </a>
+                <% } %>
+
+                <% if (user && user.role === 'master') { %>
+                <a href="/community-post?lang=<%= language %>" class="nav-item <%= activeTab === 'community-post' ? 'active' : '' %>">
+                    <i class="fas fa-clipboard-list"></i>
+                    <span>Manage Posts</span>
+                </a>
+                <a href="/water-quality?lang=<%= language %>" class="nav-item <%= activeTab === 'water' ? 'active' : '' %>">
+                    <i class="fas fa-tint"></i>
+                    <span>Water Quality</span>
+                </a>
+                <a href="/communications?lang=<%= language %>" class="nav-item <%= activeTab === 'communications' ? 'active' : '' %>">
+                    <i class="fas fa-comments"></i>
+                    <span>Communications</span>
+                </a>
+                <a href="/admin-management?lang=<%= language %>" class="nav-item <%= activeTab === 'admin-management' ? 'active' : '' %>">
+                    <i class="fas fa-user-gear"></i>
+                    <span>Admin Management</span>
+                </a>
+                <% } %>
+            </div>
+        </div>
+    </nav>
+
+    <main class="main-content">
+        <div class="container">
+            <%- body %>
+        </div>
+    </main>
+
+    <div id="google_translate_container" style="display:none;"></div>
+    <script>
+      function googleTranslateElementInit() {
+        try {
+          new google.translate.TranslateElement({
+            pageLanguage: 'en',
+            includedLanguages: 'en,hi,bn,as,mr,te,ta,gu,ur,kn,or,ml',
+            autoDisplay: false
+          }, 'google_translate_container');
+        } catch (e) {}
+      }
+    </script>
+    <script src="https://translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"></script>
+
+    <div id="alertContainer" class="alert-container"></div>
+
+    <script src="/js/main.js"></script>
+    <script src="/js/alerts.js"></script>
+    <script>
+      (function() {
+        var rtlLangs = ['ur'];
+        function setDirection(lang) {
+          try {
+            var isRtl = rtlLangs.indexOf(lang) >= 0;
+            document.documentElement.setAttribute('dir', isRtl ? 'rtl' : 'ltr');
+            document.body.style.direction = isRtl ? 'rtl' : 'ltr';
+          } catch(e){}
+        }
+        function setCookie(name, value, days) {
+          var d = new Date();
+          d.setTime(d.getTime() + (days*24*60*60*1000));
+          var expires = 'expires=' + d.toUTCString();
+          var path = 'path=/';
+          document.cookie = name + '=' + value + ';' + expires + ';' + path;
+          var host = location.hostname;
+          if (host.indexOf('.') > -1) {
+            var domain = '.' + host.split('.').slice(-2).join('.');
+            document.cookie = name + '=' + value + ';' + expires + ';' + path + ';domain=' + domain;
+          }
+        }
+        function setGTranslateCookie(lang) {
+          var val = '/en/' + (lang || 'en');
+          setCookie('googtrans', val, 365);
+          setCookie('googtrans', val, 365);
+        }
+        function applyWidget(lang) {
+          var combo = document.querySelector('select.goog-te-combo');
+          if (!combo) return false;
+          if (combo.value !== lang) {
+            combo.value = lang;
+            combo.dispatchEvent(new Event('change'));
+          } else {
+            combo.dispatchEvent(new Event('change'));
+          }
+          return true;
+        }
+        window.changeLanguage = function(language) {
+          try { localStorage.setItem('preferredLang', language); } catch(e){}
+          setGTranslateCookie(language);
+          setDirection(language);
+          if (!applyWidget(language)) {
+            var attempts = 0;
+            (function retry(){
+              attempts++;
+              if (applyWidget(language)) return;
+              if (attempts < 10) return setTimeout(retry, 300);
+              var currentUrl = new URL(window.location);
+              currentUrl.searchParams.set('lang', language);
+              window.location.href = currentUrl.toString();
+            })();
+          }
+        };
+        document.addEventListener('DOMContentLoaded', function() {
+          try {
+            var urlPref = (new URL(window.location)).searchParams.get('lang');
+            var preferred = localStorage.getItem('preferredLang') || urlPref || 'en';
+            var headerSelect = document.getElementById('languageSelect');
+            if (headerSelect && headerSelect.value !== preferred) headerSelect.value = preferred;
+            setGTranslateCookie(preferred);
+            setDirection(preferred);
+            if (preferred && preferred !== 'en') {
+              var tries = 0;
+              (function tryApply(){
+                tries++;
+                if (applyWidget(preferred)) return;
+                if (tries < 15) setTimeout(tryApply, 300);
+              })();
+            }
+          } catch(e){}
+        });
+      })();
+    </script>
+    </body>
+</html>

@@ -1,0 +1,1153 @@
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<style>
+    * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+    }
+
+    body {
+        font-family: 'Arial', sans-serif;
+        /* background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); */
+        min-height: 100vh;
+        /* padding: 20px; */
+    }
+
+    .totalContent {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+    }
+
+    .slideContainer {
+        width: 75vw;
+        max-width: 1200px;
+        height: 70vh;
+        margin: 0 auto;
+        overflow: hidden;
+        position: relative;
+        border-radius: 20px;
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+        background: white;
+    }
+
+    .slides {
+        display: flex;
+        width: calc(100% * 4);
+        height: 100%;
+        transition: transform 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    }
+
+    .slide {
+        width: 100%;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        padding: 40px;
+        text-align: center;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .slide::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        opacity: 0.1;
+        z-index: 1;
+    }
+
+    .slide-content {
+        position: relative;
+        z-index: 2;
+        max-width: 800px;
+    }
+
+    .slide h1 {
+        font-size: 3.5em;
+        margin-bottom: 30px;
+        color: #2c3e50;
+        text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
+        animation: slideInFromTop 1s ease-out;
+    }
+
+    .slide h2 {
+        font-size: 2.5em;
+        margin-bottom: 25px;
+        color: #e74c3c;
+        animation: slideInFromLeft 1s ease-out 0.3s both;
+    }
+
+    .slide p {
+        font-size: 1.4em;
+        line-height: 1.8;
+        color: #34495e;
+        margin-bottom: 20px;
+        animation: fadeInUp 1s ease-out 0.6s both;
+    }
+
+    .slide ul {
+        text-align: left;
+        font-size: 1.3em;
+        color: #34495e;
+        animation: fadeInUp 1s ease-out 0.8s both;
+    }
+
+    .slide li {
+        margin-bottom: 15px;
+        padding-left: 20px;
+        position: relative;
+    }
+
+    .slide li::before {
+        content: '💧';
+        position: absolute;
+        left: 0;
+        font-size: 1.2em;
+    }
+
+    .slide img {
+        max-width: 100%;
+        max-height: 100%;
+        object-fit: contain;
+        border-radius: 10px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+    }
+
+    /* Slide-specific backgrounds */
+    .slide1 {
+        background: linear-gradient(135deg, #74b9ff, #0984e3);
+        color: white;
+    }
+
+    .slide1 h1,
+    .slide1 h2,
+    .slide1 p {
+        color: white;
+    }
+
+    .slide2 {
+        background: linear-gradient(135deg, #fd79a8, #e84393);
+        color: white;
+    }
+
+    .slide3 {
+        background: linear-gradient(135deg, #fdcb6e, #e17055);
+    }
+
+    .slide4 {
+        background: linear-gradient(135deg, #6c5ce7, #a29bfe);
+        color: white;
+    }
+
+    /* Navigation buttons */
+    .navBtn {
+        position: absolute;
+        top: 50%;
+        transform: translateY(-50%);
+        background: rgba(255, 255, 255, 0.9);
+        color: #2c3e50;
+        border: none;
+        padding: 15px 20px;
+        cursor: pointer;
+        font-size: 24px;
+        border-radius: 50px;
+        z-index: 10;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+    }
+
+    .navBtn:hover {
+        background: white;
+        transform: translateY(-50%) scale(1.1);
+        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+    }
+
+    .prev {
+        left: 20px;
+    }
+
+    .next {
+        right: 20px;
+    }
+
+    /* Progress indicator */
+    .progress {
+        position: absolute;
+        bottom: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        display: flex;
+        gap: 10px;
+        z-index: 10;
+    }
+
+    .progress-dot {
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.5);
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+
+    .progress-dot.active {
+        background: white;
+        transform: scale(1.3);
+    }
+
+    /* Animations */
+    @keyframes slideInFromTop {
+        from {
+            opacity: 0;
+            transform: translateY(-50px);
+        }
+
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    @keyframes slideInFromLeft {
+        from {
+            opacity: 0;
+            transform: translateX(-50px);
+        }
+
+        to {
+            opacity: 1;
+            transform: translateX(0);
+        }
+    }
+
+    @keyframes fadeInUp {
+        from {
+            opacity: 0;
+            transform: translateY(30px);
+        }
+
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    /* Water drop animation */
+    .water-drop {
+        position: absolute;
+        width: 20px;
+        height: 20px;
+        background: rgba(255, 255, 255, 0.3);
+        border-radius: 50% 50% 50% 0;
+        transform: rotate(45deg);
+        animation: fall 3s infinite linear;
+    }
+
+    @keyframes fall {
+        0% {
+            top: -20px;
+            opacity: 1;
+        }
+
+        100% {
+            top: 100%;
+            opacity: 0;
+        }
+    }
+
+    /* Single content container styles */
+    .content-section {
+        max-width: 1200px;
+        margin: 60px auto;
+        padding: 50px;
+        position: relative;
+        background: linear-gradient(145deg, #ffffff, #f8f9fa);
+        border-radius: 30px;
+        box-shadow: 0 20px 50px rgba(0, 0, 0, 0.15);
+        overflow: hidden;
+        z-index: 1;
+    }
+
+    .content-section h2 {
+        font-size: 2.5em;
+        color: #2c3e50;
+        margin-bottom: 30px;
+        text-align: center;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        gap: 15px;
+    }
+
+    .content-section h3 {
+        font-size: 1.8em;
+        color: #3498db;
+        margin: 30px 0 15px 0;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .content-section p {
+        font-size: 1.2em;
+        line-height: 1.8;
+        color: #34495e;
+        margin-bottom: 20px;
+        text-align: justify;
+    }
+
+    .highlight {
+        background: linear-gradient(120deg, #a8e6cf 0%, #88d8c0 100%);
+        padding: 3px 8px;
+        border-radius: 5px;
+        font-weight: bold;
+        color: #2c3e50;
+    }
+
+    /* Animated water drops */
+    .animated-water-drop {
+        position: absolute;
+        width: 25px;
+        height: 25px;
+        background: linear-gradient(135deg, #3498db, #74b9ff);
+        border-radius: 50% 50% 50% 0;
+        transform: rotate(137deg);
+        animation: waterFall 8s infinite linear;
+        opacity: 0.6;
+    }
+
+    .animated-water-drop:nth-child(2n) {
+        animation-delay: -2s;
+        background: linear-gradient(135deg, #74b9ff, #0984e3);
+    }
+
+    .animated-water-drop:nth-child(3n) {
+        animation-delay: -4s;
+        background: linear-gradient(135deg, #55a3ff, #2e86de);
+    }
+
+    .animated-water-drop:nth-child(4n) {
+        animation-delay: -6s;
+        background: linear-gradient(135deg, #48cae4, #0077b6);
+    }
+
+    /* Animated virus particles */
+    .animated-virus {
+        position: absolute;
+        width: 30px;
+        height: 30px;
+        background: radial-gradient(circle, #e74c3c, #c0392b);
+        border-radius: 50%;
+        animation: virusFloat 10s infinite ease-in-out;
+        opacity: 0.5;
+    }
+
+    .animated-virus::before {
+        content: '';
+        position: absolute;
+        width: 6px;
+        height: 6px;
+        background: #e74c3c;
+        border-radius: 50%;
+        top: -3px;
+        left: 50%;
+        transform: translateX(-50%);
+        box-shadow:
+            0 36px 0 #e74c3c,
+            -15px 15px 0 #e74c3c,
+            15px 15px 0 #e74c3c,
+            -15px -15px 0 #e74c3c,
+            15px -15px 0 #e74c3c;
+    }
+
+    .animated-virus:nth-child(3n) {
+        background: radial-gradient(circle, #f39c12, #e67e22);
+        animation-delay: -3s;
+    }
+
+    .animated-virus:nth-child(3n)::before {
+        box-shadow:
+            0 36px 0 #f39c12,
+            -15px 15px 0 #f39c12,
+            15px 15px 0 #f39c12,
+            -15px -15px 0 #f39c12,
+            15px -15px 0 #f39c12;
+    }
+
+    .animated-virus:nth-child(5n) {
+        background: radial-gradient(circle, #9b59b6, #8e44ad);
+        animation-delay: -5s;
+    }
+
+    .animated-virus:nth-child(5n)::before {
+        box-shadow:
+            0 36px 0 #9b59b6,
+            -15px 15px 0 #9b59b6,
+            15px 15px 0 #9b59b6,
+            -15px -15px 0 #9b59b6,
+            15px -15px 0 #9b59b6;
+    }
+
+    @keyframes waterFall {
+        0% {
+            top: -30px;
+            opacity: 0;
+        }
+
+        10% {
+            opacity: 0.6;
+        }
+
+        90% {
+            opacity: 0.6;
+        }
+
+        100% {
+            top: 100%;
+            opacity: 0;
+        }
+    }
+
+    @keyframes virusFloat {
+
+        0%,
+        100% {
+            transform: translate(0, 0) rotate(0deg) scale(1);
+        }
+
+        25% {
+            transform: translate(-20px, -30px) rotate(90deg) scale(1.1);
+        }
+
+        50% {
+            transform: translate(30px, -20px) rotate(180deg) scale(0.9);
+        }
+
+        75% {
+            transform: translate(-10px, 20px) rotate(270deg) scale(1.05);
+        }
+    }
+
+    /* Important notice box */
+    .important-notice {
+        background: linear-gradient(135deg, #ff6b6b, #ee5a52);
+        color: white;
+        padding: 25px;
+        border-radius: 15px;
+        margin: 30px 0;
+        text-align: center;
+        animation: gentle-pulse 3s ease-in-out infinite;
+    }
+
+    .important-notice h4 {
+        font-size: 1.4em;
+        margin-bottom: 10px;
+    }
+
+    @keyframes gentle-pulse {
+
+        0%,
+        100% {
+            transform: scale(1);
+            box-shadow: 0 10px 30px rgba(255, 107, 107, 0.3);
+        }
+
+        50% {
+            transform: scale(1.02);
+            box-shadow: 0 15px 40px rgba(255, 107, 107, 0.4);
+        }
+    }
+
+    /* Responsive design */
+    @media (max-width: 768px) {
+        .slide h1 {
+            font-size: 2.5em;
+        }
+
+        .slide h2 {
+            font-size: 2em;
+        }
+
+        .slide p {
+            font-size: 1.2em;
+        }
+
+        .slide ul {
+            font-size: 1.1em;
+        }
+
+        .content-card {
+            padding: 25px;
+        }
+
+        .content-card h2 {
+            font-size: 1.8em;
+        }
+
+        .floating-element {
+            display: none;
+        }
+    }
+
+    .page-header {
+        margin-top: 50px;
+    }
+
+    * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+
+
+        .content-section {
+            max-width: 1203px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+            position: relative;
+        }
+
+        .faq-container {
+            padding: 20px;
+        }
+
+        .faq-item {
+            margin-bottom: 15px;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            transition: transform 0.3s ease;
+        }
+
+        .faq-item:hover {
+            transform: translateY(-2px);
+        }
+
+        .faq-question {
+            background: aliceblue;
+            color: black;
+            padding: 20px;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 1.1em;
+            font-weight: bold;
+            transition: all 0.3s ease;
+        }
+
+        .faq-question .icon {
+            font-size: 1.2em;
+            transition: transform 0.3s ease;
+        }
+
+        .faq-question.active .icon {
+            transform: rotate(180deg);
+        }
+
+        .faq-answer {
+            background: #f8f9ff;
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.4s ease, padding 0.4s ease;
+            position: relative;
+        }
+
+        .faq-answer.active {
+            max-height: 1000px;
+            padding: 20px;
+        }
+
+        .faq-answer p {
+            line-height: 1.6;
+            color: #333;
+            margin-bottom: 15px;
+        }
+
+        .highlight {
+            background: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .important-notice {
+            background: linear-gradient(135deg, #ff9a9e 0%, #fecfef 100%);
+            padding: 15px;
+            border-radius: 10px;
+            margin: 15px 0;
+            border-left: 4px solid #ff6b6b;
+        }
+
+        .important-notice h4 {
+            color: #d63031;
+            margin-bottom: 8px;
+            font-size: 1.1em;
+        }
+
+        .important-notice p {
+            color: #2d3436;
+            font-weight: 500;
+        }
+
+        /* Animated Water Drops */
+        .animated-water-drop {
+            position: absolute;
+            width: 12px;
+            height: 16px;
+            background: radial-gradient(ellipse at center, #00b4db 0%, #0083b0 100%);
+            border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%;
+            animation: waterFall 4s infinite linear;
+            opacity: 0.7;
+            z-index: 10;
+        }
+
+        @keyframes waterFall {
+            0% {
+                top: -20px;
+                opacity: 0;
+            }
+            10% {
+                opacity: 0.7;
+            }
+            90% {
+                opacity: 0.7;
+            }
+            100% {
+                top: 100%;
+                opacity: 0;
+            }
+        }
+
+        /* Animated Virus Particles */
+        .animated-virus {
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            background: radial-gradient(circle, #ff6b6b 30%, #ee5a52 70%);
+            border-radius: 50%;
+            animation: virusFloat 6s infinite ease-in-out;
+            z-index: 10;
+        }
+
+        .animated-virus::before,
+        .animated-virus::after {
+            content: '';
+            position: absolute;
+            width: 4px;
+            height: 4px;
+            background: #ff4757;
+            border-radius: 50%;
+        }
+
+        .animated-virus::before {
+            top: -2px;
+            left: 2px;
+        }
+
+        .animated-virus::after {
+            bottom: -2px;
+            right: 2px;
+        }
+
+        @keyframes virusFloat {
+            0%, 100% {
+                transform: translateY(0px) rotate(0deg);
+            }
+            50% {
+                transform: translateY(-20px) rotate(180deg);
+            }
+        }
+
+        @media (max-width: 768px) {
+            .content-section {
+                margin: 10px;
+                border-radius: 15px;
+            }
+            
+            .header {
+                padding: 20px;
+            }
+            
+            .header h2 {
+                font-size: 1.8em;
+            }
+            
+            .faq-question {
+                padding: 15px;
+                font-size: 1em;
+            }
+        }
+</style>
+<div class="totalContent">
+    <div class="slideContainer">
+        <div class="slides">
+            <!-- Slide 1: Title -->
+            <div class="slide slide1">
+                <div class="slide-content">
+                    <h1>💧 Water-Borne Diseases</h1>
+                    <p>Understanding the risks and protecting your health</p>
+                    <p style="font-size: 1.2em; margin-top: 30px;">Clean water saves lives - Let's learn how to stay
+                        safe!
+                    </p>
+                </div>
+                <div class="water-drop" style="left: 10%; animation-delay: 0s;"></div>
+                <div class="water-drop" style="left: 20%; animation-delay: 0.5s;"></div>
+                <div class="water-drop" style="left: 80%; animation-delay: 1s;"></div>
+                <div class="water-drop" style="left: 90%; animation-delay: 1.5s;"></div>
+            </div>
+
+            <!-- Slide 2: Image 1 -->
+            <div class="slide slide2">
+                <img src="/images/pic1.jpg" alt="Water-borne diseases information">
+            </div>
+
+            <!-- Slide 3: Image 2 -->
+            <div class="slide slide3">
+                <img src="/images/pic2.jpg" alt="Water-borne diseases information">
+            </div>
+
+            <!-- Slide 4: Image 3 -->
+            <div class="slide slide4">
+                <img src="/images/pic3.jpg" alt="Water-borne diseases information">
+            </div>
+        </div>
+
+        <!-- Navigation buttons -->
+        <button class="navBtn prev">&#10094;</button>
+        <button class="navBtn next">&#10095;</button>
+
+        <!-- Progress indicator -->
+        <div class="progress">
+            <div class="progress-dot active"></div>
+            <div class="progress-dot"></div>
+            <div class="progress-dot"></div>
+            <div class="progress-dot"></div>
+        </div>
+    </div>
+</div>
+
+<div class="page-header">
+    <h2 class="page-title">Health Surveillance Dashboard</h2>
+    <div class="last-updated">
+        Last updated: <span id="lastUpdated">
+            <%= new Date().toLocaleString() %>
+        </span>
+    </div>
+</div>
+
+<div class="stats-grid">
+    <div class="stat-card blue">
+        <div class="stat-content">
+            <div class="stat-info">
+                <p class="stat-label">Total Cases</p>
+                <p class="stat-value">
+                    <%= stats.totalCases %>
+                </p>
+            </div>
+            <div class="stat-icon">
+                <i class="fas fa-users"></i>
+            </div>
+        </div>
+        <div class="stat-change">
+            <span class="change-badge up">+12%</span>
+        </div>
+    </div>
+
+    <div class="stat-card red">
+        <div class="stat-content">
+            <div class="stat-info">
+                <p class="stat-label">Active Alerts</p>
+                <p class="stat-value">
+                    <%= stats.activeAlerts %>
+                </p>
+            </div>
+            <div class="stat-icon">
+                <i class="fas fa-exclamation-triangle"></i>
+            </div>
+        </div>
+        <div class="stat-change">
+            <span class="change-badge up">+5</span>
+        </div>
+    </div>
+
+    <div class="stat-card green">
+        <div class="stat-content">
+            <div class="stat-info">
+                <p class="stat-label">Water Sources Monitored</p>
+                <p class="stat-value">
+                    <%= stats.waterSources %>
+                </p>
+            </div>
+            <div class="stat-icon">
+                <i class="fas fa-map-marker-alt"></i>
+            </div>
+        </div>
+        <div class="stat-change">
+            <span class="change-badge safe">98%</span>
+        </div>
+    </div>
+
+    <div class="stat-card yellow">
+        <div class="stat-content">
+            <div class="stat-info">
+                <p class="stat-label">Current Risk Level</p>
+                <p class="stat-value">
+                    <%= stats.riskLevel %>
+                </p>
+            </div>
+            <div class="stat-icon">
+                <i class="fas fa-chart-line"></i>
+            </div>
+        </div>
+        <div class="stat-change">
+            <span class="change-badge stable">Stable</span>
+        </div>
+    </div>
+</div>
+
+<div class="dashboard-grid">
+    <div class="dashboard-card">
+        <h3 class="card-title">Outbreak Hotspots</h3>
+        <div class="outbreak-map">
+            <div class="map-controls"
+                style="display:flex;justify-content:flex-end;gap:0.5rem;margin-bottom:0.5rem;align-items:center;">
+                <label for="outbreakMonthSelect" style="margin-right:0.5rem;">Month:</label>
+                <select id="outbreakMonthSelect"
+                    style="padding:0.35rem 0.5rem;border:1px solid #d1d5db;border-radius:0.375rem;background:#fff;"></select>
+            </div>
+            <div id="map"></div>
+            <div class="map-legend">
+                <div class="legend-item">
+                    <div class="legend-color high-risk"></div>
+                    <span>High Risk</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color medium-risk"></div>
+                    <span>Medium Risk</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color low-risk"></div>
+                    <span>Low Risk</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="dashboard-card">
+        <h3 class="card-title">Trend Analysis</h3>
+        <div class="trend-chart">
+            <div class="chart-header">
+                <div class="chart-info">
+                    <i class="fas fa-calendar"></i>
+                    <span id="trendHeaderYear">Monthly Trend</span>
+                </div>
+                <div class="trend-indicator">
+                    <i class="fas fa-trending-up"></i>
+                    <span>+23% vs last year</span>
+                </div>
+            </div>
+            <div class="chart-container" id="trendChartContainer">
+            </div>
+        </div>
+    </div>
+</div>
+
+
+
+<div class="content-section">
+    <div class="header">
+        <h2>💧 Understanding Water-Borne diseases FAQ</h2>
+    </div>
+
+    <div class="faq-container">
+        <div class="faq-item">
+            <div class="faq-question" onclick="toggleFAQ(this)">
+                <span>🌊 What Are Water-Borne Diseases?</span>
+                <span class="icon">▼</span>
+            </div>
+            <div class="faq-answer">
+                <!-- Animated Water Drops for this section -->
+                <div class="animated-water-drop" style="left: 5%; animation-delay: 0s;"></div>
+                <div class="animated-water-drop" style="left: 25%; animation-delay: -1s;"></div>
+                <div class="animated-water-drop" style="left: 75%; animation-delay: -2s;"></div>
+                <div class="animated-water-drop" style="left: 95%; animation-delay: -3s;"></div>
+
+                <!-- Animated Virus Particles for this section -->
+                <div class="animated-virus" style="top: 15%; left: 10%; animation-delay: 0s;"></div>
+                <div class="animated-virus" style="top: 45%; left: 88%; animation-delay: -2s;"></div>
+
+                <p>Water-borne diseases are illnesses caused by <span class="highlight">pathogenic microorganisms</span>
+                    that are transmitted through contaminated water. These diseases affect millions of people worldwide
+                    and are particularly prevalent in areas with poor sanitation and limited access to clean drinking
+                    water. When we consume contaminated water or food prepared with unsafe water, harmful bacteria,
+                    viruses, parasites, and other pathogens enter our digestive system, causing severe health problems
+                    ranging from mild stomach upset to life-threatening conditions.</p>
+            </div>
+        </div>
+
+        <div class="faq-item">
+            <div class="faq-question" onclick="toggleFAQ(this)">
+                <span>🦠 How Do These Diseases Spread?</span>
+                <span class="icon">▼</span>
+            </div>
+            <div class="faq-answer">
+                <!-- Animated Water Drops for this section -->
+                <div class="animated-water-drop" style="left: 15%; animation-delay: -0.5s;"></div>
+                <div class="animated-water-drop" style="left: 65%; animation-delay: -1.5s;"></div>
+                <div class="animated-water-drop" style="left: 85%; animation-delay: -2.5s;"></div>
+
+                <!-- Animated Virus Particles for this section -->
+                <div class="animated-virus" style="top: 25%; left: 82%; animation-delay: -1s;"></div>
+                <div class="animated-virus" style="top: 65%; left: 12%; animation-delay: -3s;"></div>
+
+                <p>Water contamination occurs through various pathways. <span class="highlight">Human and animal
+                        waste</span> is the primary source of contamination, especially when proper sewage treatment is
+                    lacking. Industrial pollution, agricultural runoff, and poor waste management further compromise
+                    water quality. The transmission happens when people drink contaminated water, eat food washed or
+                    prepared with unsafe water, or come into contact with contaminated surfaces. Poor personal hygiene
+                    practices can accelerate the spread of these diseases within communities.</p>
+
+                <div class="important-notice">
+                    <h4>⚠️ Critical Health Alert</h4>
+                    <p>According to WHO, contaminated water causes over 3.4 million deaths annually, with children being
+                        the most vulnerable population!</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="faq-item">
+            <div class="faq-question" onclick="toggleFAQ(this)">
+                <span>🏥 Recognizing the Symptoms</span>
+                <span class="icon">▼</span>
+            </div>
+            <div class="faq-answer">
+                <!-- Animated Water Drops for this section -->
+                <div class="animated-water-drop" style="left: 35%; animation-delay: -0.8s;"></div>
+                <div class="animated-water-drop" style="left: 55%; animation-delay: -1.8s;"></div>
+
+                <!-- Animated Virus Particles for this section -->
+                <div class="animated-virus" style="top: 35%; left: 15%; animation-delay: -0.5s;"></div>
+                <div class="animated-virus" style="top: 55%; left: 85%; animation-delay: -2.5s;"></div>
+
+                <p>Early recognition of symptoms is crucial for timely treatment. Most water-borne diseases affect the
+                    <span class="highlight">digestive system</span> first, causing symptoms like diarrhea, vomiting, and
+                    stomach cramps. However, some diseases can affect other organs as well. Symptoms may appear within
+                    hours or take several days to manifest. Persistent diarrhea, especially with blood or mucus, high
+                    fever, severe dehydration, and yellowing of the skin or eyes are serious warning signs that require
+                    immediate medical attention.</p>
+            </div>
+        </div>
+
+        <div class="faq-item">
+            <div class="faq-question" onclick="toggleFAQ(this)">
+                <span>🛡️ Prevention: Your Best Defense</span>
+                <span class="icon">▼</span>
+            </div>
+            <div class="faq-answer">
+                <!-- Animated Water Drops for this section -->
+                <div class="animated-water-drop" style="left: 20%; animation-delay: -0.3s;"></div>
+                <div class="animated-water-drop" style="left: 45%; animation-delay: -1.3s;"></div>
+                <div class="animated-water-drop" style="left: 80%; animation-delay: -2.3s;"></div>
+
+                <!-- Animated Virus Particles for this section -->
+                <div class="animated-virus" style="top: 20%; left: 70%; animation-delay: -1.5s;"></div>
+                <div class="animated-virus" style="top: 60%; left: 25%; animation-delay: -3.5s;"></div>
+
+                <p>The good news is that water-borne diseases are <span class="highlight">highly preventable</span> with
+                    proper precautions. The golden rule is simple: "Boil it, cook it, peel it, or forget it!" This means
+                    drinking only boiled or bottled water, eating hot freshly-cooked food, and consuming fruits you can
+                    peel yourself. Personal hygiene plays a vital role in prevention. Wash your hands frequently with
+                    soap and clean water, especially before eating and after using the toilet. Avoid ice cubes from
+                    unknown sources, street vendor food, and raw vegetables in areas with questionable water quality.
+                </p>
+            </div>
+        </div>
+
+        <div class="faq-item">
+            <div class="faq-question" onclick="toggleFAQ(this)">
+                <span>🚨 When to Seek Medical Help</span>
+                <span class="icon">▼</span>
+            </div>
+            <div class="faq-answer">
+                <!-- Animated Water Drops for this section -->
+                <div class="animated-water-drop" style="left: 10%; animation-delay: -0.7s;"></div>
+                <div class="animated-water-drop" style="left: 90%; animation-delay: -1.7s;"></div>
+
+                <!-- Animated Virus Particles for this section -->
+                <div class="animated-virus" style="top: 30%; left: 60%; animation-delay: -0.8s;"></div>
+                <div class="animated-virus" style="top: 70%; left: 40%; animation-delay: -2.8s;"></div>
+
+                <p>While mild symptoms may resolve on their own, certain signs indicate the need for immediate medical
+                    attention. <span class="highlight">Severe dehydration</span> is particularly dangerous, especially
+                    in children and elderly individuals. Signs include dry mouth, sunken eyes, decreased urination, and
+                    dizziness. Don't wait if you experience bloody stools, high fever above 101°F (38.3°C), severe
+                    abdominal pain, signs of jaundice, or if symptoms worsen or persist for more than 24-48 hours. Quick
+                    medical intervention can prevent complications and ensure faster recovery.</p>
+
+                <div class="important-notice">
+                    <h4>🆘 Emergency Warning Signs</h4>
+                    <p>Call for immediate medical help if you experience severe dehydration, bloody diarrhea, high
+                        fever, or persistent vomiting!</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="faq-item">
+            <div class="faq-question" onclick="toggleFAQ(this)">
+                <span>💪 Stay Safe, Stay Healthy</span>
+                <span class="icon">▼</span>
+            </div>
+            <div class="faq-answer">
+                <!-- Animated Water Drops for this section -->
+                <div class="animated-water-drop" style="left: 30%; animation-delay: -0.2s;"></div>
+                <div class="animated-water-drop" style="left: 70%; animation-delay: -1.2s;"></div>
+
+                <!-- Animated Virus Particles for this section -->
+                <div class="animated-virus" style="top: 25%; left: 50%; animation-delay: -0.3s;"></div>
+                <div class="animated-virus" style="top: 75%; left: 80%; animation-delay: -2.3s;"></div>
+
+                <p>Remember that prevention is always better than cure. By following simple hygiene practices and being
+                    cautious about water and food sources, you can protect yourself and your loved ones from water-borne
+                    diseases. Stay informed, stay vigilant, and don't hesitate to seek medical help when needed. Clean
+                    water and good hygiene are fundamental rights that everyone deserves - let's work together to make
+                    them accessible to all.</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<script>
+    let slides = document.querySelector(".slides");
+    let totalSlides = 4;
+    let currentSlide = 0;
+    let autoSlideInterval;
+
+    function updateProgressDots() {
+        const dots = document.querySelectorAll('.progress-dot');
+        dots.forEach((dot, index) => {
+            dot.classList.toggle('active', index === currentSlide);
+        });
+    }
+
+    function showSlide(index, direction = 1) {
+        if (index < 0) index = totalSlides - 1;
+        if (index >= totalSlides) index = 0;
+
+        currentSlide = index;
+        slides.style.transform = `translateX(-${currentSlide * (100 / totalSlides)}%)`;
+        updateProgressDots();
+    }
+
+    function nextSlide() {
+        showSlide(currentSlide + 1);
+    }
+
+    function prevSlide() {
+        showSlide(currentSlide - 1);
+    }
+
+    function startAutoSlide() {
+        autoSlideInterval = setInterval(nextSlide, 4000);
+    }
+
+    function stopAutoSlide() {
+        clearInterval(autoSlideInterval);
+    }
+
+    function restartAutoSlide() {
+        stopAutoSlide();
+        startAutoSlide();
+    }
+
+    // Event listeners
+    document.querySelector(".next").addEventListener("click", () => {
+        nextSlide();
+        restartAutoSlide();
+    });
+
+    document.querySelector(".prev").addEventListener("click", () => {
+        prevSlide();
+        restartAutoSlide();
+    });
+
+    // Progress dot navigation
+    document.querySelectorAll('.progress-dot').forEach((dot, index) => {
+        dot.addEventListener('click', () => {
+            showSlide(index);
+            restartAutoSlide();
+        });
+    });
+
+    // Pause auto-slide on hover
+    document.querySelector('.slideContainer').addEventListener('mouseenter', stopAutoSlide);
+    document.querySelector('.slideContainer').addEventListener('mouseleave', startAutoSlide);
+
+    // Start auto-slide
+    startAutoSlide();
+
+    // Keyboard navigation
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'ArrowRight') {
+            nextSlide();
+            restartAutoSlide();
+        } else if (e.key === 'ArrowLeft') {
+            prevSlide();
+            restartAutoSlide();
+        }
+    });
+    document.addEventListener('DOMContentLoaded', function () {
+        initializeCharts();
+        initializeMap();
+        startRealTimeUpdates();
+    });
+
+    function toggleFAQ(element) {
+        const faqAnswer = element.nextElementSibling;
+        const icon = element.querySelector('.icon');
+        const isActive = element.classList.contains('active');
+
+        // Close all other FAQ items
+        document.querySelectorAll('.faq-question.active').forEach(item => {
+            if (item !== element) {
+                item.classList.remove('active');
+                item.nextElementSibling.classList.remove('active');
+            }
+        });
+
+        // Toggle current FAQ item
+        if (isActive) {
+            element.classList.remove('active');
+            faqAnswer.classList.remove('active');
+        } else {
+            element.classList.add('active');
+            faqAnswer.classList.add('active');
+        }
+    }
+
+    // Add some interactive hover effects
+    document.querySelectorAll('.faq-question').forEach(question => {
+        question.addEventListener('mouseenter', function () {
+            this.style.transform = 'translateX(5px)';
+        });
+
+        question.addEventListener('mouseleave', function () {
+            this.style.transform = 'translateX(0)';
+        });
+    });
+</script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="/js/map.js"></script>

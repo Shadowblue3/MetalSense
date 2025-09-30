@@ -1,0 +1,282 @@
+<style>
+  .post-threads{
+     padding-bottom: 20px;
+  }
+  .comments h4{
+    padding: 20px;
+  }
+  .comment{
+    padding-left: 20px;
+  }
+  .comment-form{
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+      gap: 10px;
+  }
+  .comment-input{
+    padding: 10px;
+    flex: 1;
+  }
+</style>
+<div class="post-head">
+  <h2 class="page-title">Communication Board</h2>
+  <p class="subtitle">Share updates about water bodies and disease outbreaks. This is a threaded board (not real-time).</p>
+</div>
+
+<section class="card" style="padding:1rem;margin-bottom:1rem;">
+  <div style="display:flex; justify-content:space-between; align-items:start; gap:1rem; flex-wrap:wrap;">
+    <h3 style="margin:0 0 0.75rem 0;">Create a Thread</h3>
+    <button id="openDataChangeBtn" class="btn" style="background:#dc2626;color:#fff;">Report about the data change</button>
+  </div>
+
+  <!-- Data Change Report Modal -->
+  <div id="dataChangeModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.4); align-items:center; justify-content:center; z-index:50;">
+    <div style="background:#fff; padding:1rem; border-radius:8px; width:100%; max-width:560px;">
+      <h3 style="margin-top:0;">Report about the data change</h3>
+      <p style="margin:0 0 0.5rem 0; color:#6b7280;">This will send an email to inform about changes in the disease data. It will not change data directly.</p>
+      <form id="dataChangeForm" class="form-grid" onsubmit="return false;">
+        <div class="form-row">
+          <label>Disease name</label>
+          <input type="text" name="diseaseName" required />
+        </div>
+        <div class="form-row">
+          <label>Location of which data is changed</label>
+          <input type="text" name="location" required />
+        </div>
+        <div class="form-row">
+          <label>Date</label>
+          <input type="date" name="date" required />
+        </div>
+        <div class="form-row">
+          <label>Description</label>
+          <textarea name="description" rows="4" required placeholder="Describe the change..."></textarea>
+        </div>
+        <div class="form-actions" style="display:flex; gap:0.5rem;">
+          <button id="sendDataChangeBtn" type="submit" class="btn" style="background:#dc2626;color:#fff;">Send</button>
+          <button type="button" id="cancelDataChangeBtn" class="btn" style="background:#e5e7eb; color:#111827;">Cancel</button>
+        </div>
+      </form>
+      <div id="dataChangeMsg" style="margin-top:0.5rem; font-size:0.9rem;"></div>
+    </div>
+  </div>
+
+  <form id="threadForm" class="form-grid" onsubmit="return false;">
+    <div class="form-row">
+      <label>Title</label>
+      <input type="text" name="title" required />
+    </div>
+    <div class="form-row">
+      <label>Category</label>
+      <select name="category">
+        <option value="general">General</option>
+        <option value="water">Water Quality</option>
+        <option value="disease">Disease Outbreak</option>
+      </select>
+    </div>
+    <div class="form-row">
+      <label>State</label>
+      <input type="text" name="state" placeholder="Optional" />
+    </div>
+    <div class="form-row">
+      <label>District</label>
+      <input type="text" name="district" placeholder="Optional" />
+    </div>
+    <div class="form-row">
+      <label>Details</label>
+      <textarea name="body" rows="4" required></textarea>
+    </div>
+    <div class="form-actions">
+      <button type="submit" class="btn" id="createThreadBtn">Post Thread</button>
+    </div>
+  </form>
+  <div id="threadMsg" style="margin-top:0.75rem;font-size:0.9rem;"></div>
+</section>
+
+<section class="card post-threads">
+  <h3 style="margin:0 0 0.75rem 0;">Recent Threads</h3>
+  <div id="threadsList">
+    <% (threads || []).forEach(function(t){ %>
+      <article style = "margin: 15px" class="post-card" data-id="<%= t._id %>">
+        <header class="post-card-header">
+          <div class="title-wrap">
+            <h2 class="post-title"><%= t.title %></h2>
+            <span class="badge"><%= t.category %></span>
+          </div>
+          <div class="region-meta">
+            <i class="fas fa-user"></i>
+            <%= t.authorName || (t.authorRole === 'master' ? 'Master' : 'Official') %> •
+            <i class="fas fa-clock" style="margin-left:0.5rem;"></i>
+            <%= new Date(t.updatedAt).toLocaleString() %>
+          </div>
+        </header>
+        <section class="post-body">
+          <p><%= t.body %></p>
+          <p class="kv" style="margin-top:0.5rem;color:#6b7280;">
+            <i class="fas fa-map-marker-alt"></i>
+            <%= [t.state, t.district].filter(Boolean).join(', ') %>
+          </p>
+        </section>
+        <section class="comments">
+          <h4>Comments</h4>
+          <div class="comments-list">
+            <% (t.comments || []).forEach(function(c){ %>
+              <div class="comment">
+                <div style="font-size:0.9rem;color:#4b5563;">
+                  <i class="fas fa-user-shield"></i>
+                  <strong><%= c.authorName || (c.authorRole === 'master' ? 'Master' : 'Official') %></strong>
+                  <span style="margin-left:0.5rem;color:#9ca3af;">(<%= new Date(c.createdAt).toLocaleString() %>)</span>
+                </div>
+                <div><%= c.text %></div>
+              </div>
+            <% }) %>
+          </div>
+          <div class="comment-form">
+            <input type="text" class="comment-input" placeholder="Add a comment" />
+            <button class="btn add-comment">Comment</button>
+          </div>
+        </section>
+      </article>
+    <% }) %>
+  </div>
+</section>
+
+<script>
+(function(){
+  const form = document.getElementById('threadForm');
+  const btn = document.getElementById('createThreadBtn');
+  const msg = document.getElementById('threadMsg');
+  const list = document.getElementById('threadsList');
+
+  // Data change report elements
+  const openDataChangeBtn = document.getElementById('openDataChangeBtn');
+  const dataChangeModal = document.getElementById('dataChangeModal');
+  const dataChangeForm = document.getElementById('dataChangeForm');
+  const dataChangeMsg = document.getElementById('dataChangeMsg');
+  const sendDataChangeBtn = document.getElementById('sendDataChangeBtn');
+  const cancelDataChangeBtn = document.getElementById('cancelDataChangeBtn');
+
+  openDataChangeBtn.addEventListener('click', () => {
+    dataChangeMsg.textContent = '';
+    dataChangeForm.reset();
+    dataChangeModal.style.display = 'flex';
+  });
+  cancelDataChangeBtn.addEventListener('click', () => {
+    dataChangeModal.style.display = 'none';
+  });
+  dataChangeForm.addEventListener('submit', async () => {
+    dataChangeMsg.textContent = '';
+    sendDataChangeBtn.disabled = true;
+    try {
+      const payload = Object.fromEntries(new FormData(dataChangeForm).entries());
+      const res = await fetch('/communications/data-change-report', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok || json.success === false) {
+        throw new Error((json && json.message) || 'Failed to send report');
+      }
+      dataChangeMsg.style.color = '#065f46';
+      dataChangeMsg.textContent = 'Report email sent successfully';
+      setTimeout(() => { dataChangeModal.style.display = 'none'; }, 600);
+    } catch (err) {
+      dataChangeMsg.style.color = '#991b1b';
+      dataChangeMsg.textContent = err.message || 'Failed to send report';
+    } finally {
+      sendDataChangeBtn.disabled = false;
+    }
+  });
+
+  form.addEventListener('submit', async function(){
+    msg.textContent = '';
+    btn.disabled = true;
+    const data = Object.fromEntries(new FormData(form).entries());
+
+    try {
+      const res = await fetch('/communications', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      });
+      const json = await res.json();
+      if (!res.ok || !json.success) throw new Error(json.message || 'Failed to create thread');
+      msg.style.color = '#065f46';
+      msg.textContent = 'Thread created';
+
+      const now = new Date().toLocaleString();
+      const article = document.createElement('article');
+      article.className = 'post-card';
+      article.setAttribute('data-id', json.id);
+      article.innerHTML = `
+        <header class="post-card-header">
+          <div class="title-wrap">
+            <h2 class="post-title">${data.title}</h2>
+            <span class="badge">${data.category || 'general'}</span>
+          </div>
+          <div class="region-meta">
+            <i class="fas fa-user"></i>
+            You • <i class="fas fa-clock" style="margin-left:0.5rem;"></i> ${now}
+          </div>
+        </header>
+        <section class="post-body">
+          <p>${data.body}</p>
+          <p class="kv" style="margin-top:0.5rem;color:#6b7280;">
+            <i class="fas fa-map-marker-alt"></i>
+            ${(data.state || '') + (data.district ? ', ' + data.district : '')}
+          </p>
+        </section>
+        <section class="comments">
+          <h4 style="margin:0.5rem 0;">Comments</h4>
+          <div class="comments-list"></div>
+          <div class="comment-form" style="margin-top:0.5rem;display:flex;gap:0.5rem;">
+            <input type="text" class="comment-input" placeholder="Add a comment" style="flex:1;" />
+            <button class="btn add-comment">Comment</button>
+          </div>
+        </section>`;
+      list.prepend(article);
+      form.reset();
+    } catch (err) {
+      msg.style.color = '#991b1b';
+      msg.textContent = err.message;
+    } finally {
+      btn.disabled = false;
+    }
+  });
+
+  document.addEventListener('click', async (ev) => {
+    const btn = ev.target.closest('button.add-comment');
+    if (!btn) return;
+    const card = ev.target.closest('article.post-card');
+    const id = card?.getAttribute('data-id');
+    const input = card.querySelector('.comment-input');
+    const text = String(input?.value || '').trim();
+    if (!id || !text) return;
+    btn.disabled = true;
+    try {
+      const res = await fetch(`/communications/${id}/comment`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text })
+      });
+      const json = await res.json();
+      if (!res.ok || !json.success) throw new Error('Failed to add comment');
+      const list = card.querySelector('.comments-list');
+      const div = document.createElement('div');
+      div.className = 'comment';
+      div.style.cssText = 'padding: 20px';
+      const now = new Date().toLocaleString();
+      div.innerHTML = `<div style="font-size:0.9rem;color:#4b5563;"><i class=\"fas fa-user-shield\"></i> <strong>You</strong> <span style=\"margin-left:0.5rem;color:#9ca3af;\">(${now})</span></div><div>${text}</div>`;
+      list.appendChild(div);
+      input.value = '';
+    } catch (err) {
+      alert(err.message);
+    } finally {
+      btn.disabled = false;
+    }
+  });
+})();
+</script>

@@ -1,0 +1,245 @@
+<div class="dashboard-grid">
+  <div class="dashboard-card">
+    <div class="card-title-row" style="display:flex;justify-content:space-between;align-items:center;gap:1rem;">
+      <h3 class="card-title">Hotspot Map</h3>
+      <div class="state-filter" style="display:flex;align-items:center;gap:0.5rem;">
+        <label for="stateFilter" class="form-label" style="font-weight:600;">
+          <i class="fas fa-flag"></i> State
+        </label>
+        <select id="stateFilter" class="form-select" style="min-width:220px;">
+          <option value="">Detecting...</option>
+        </select>
+      </div>
+    </div>
+    <div id="hotspotMap" class="prediction-map" style="height:420px;border-radius:12px;overflow:hidden;" aria-label="Outbreak Hotspots"></div>
+  </div>
+</div>
+
+<div class="dashboard-card" style="margin-top:1rem;">
+  <h3 class="card-title">Outbreak Predictions</h3>
+  <div class="table-wrapper prediction-table-wrapper">
+    <table class="prediction-table enhanced">
+      <thead>
+        <tr>
+          <th>Risk</th>
+          <th>District</th>
+          <th>Disease</th>
+          <th>Date</th>
+        </tr>
+      </thead>
+      <tbody id="predictionTbody">
+        <tr><td colspan="4" style="text-align:center;color:#6b7280;">Loading...</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<style>
+.prediction-table.enhanced {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  overflow: hidden;
+}
+.prediction-table.enhanced thead th {
+  background: #f9fafb;
+  color: #374151;
+  font-weight: 700;
+  text-transform: uppercase;
+  font-size: 12px;
+  letter-spacing: .03em;
+  padding: 10px 12px;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+.prediction-table.enhanced tbody td {
+  padding: 10px 12px;
+  border-top: 1px solid #f3f4f6;
+}
+.prediction-table.enhanced tbody tr:nth-child(odd) td {
+  background: #fcfcfd;
+}
+.risk-badge {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-weight: 700;
+  font-size: 12px;
+}
+.risk-badge.high { background: rgba(239,68,68,.12); color: #b91c1c; }
+.risk-badge.medium { background: rgba(234,179,8,.15); color: #92400e; }
+.risk-badge.low { background: rgba(16,185,129,.15); color: #065f46; }
+.leaflet-container { border-radius: 12px; }
+</style>
+
+<script>
+  window.__PY_AREAS__ = <%- JSON.stringify(redzones || []) %>;
+  window.__MAP_PATH__ = <%- mapPath ? JSON.stringify(mapPath) : 'null' %>;
+</script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.3/dist/leaflet.css">
+<script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.3/dist/leaflet.js"></script>
+<script>
+(function(){
+  // State list
+  var STATES_IN_INDIA = ['Andhra Pradesh','Arunachal Pradesh','Assam','Bihar','Chhattisgarh','Goa','Gujarat','Haryana','Himachal Pradesh','Jharkhand','Karnataka','Kerala','Madhya Pradesh','Maharashtra','Manipur','Meghalaya','Mizoram','Nagaland','Odisha','Punjab','Rajasthan','Sikkim','Tamil Nadu','Telangana','Tripura','Uttar Pradesh','Uttarakhand','West Bengal','Andaman and Nicobar Islands','Chandigarh','Dadra and Nagar Haveli and Daman and Diu','Delhi','Jammu and Kashmir','Ladakh','Lakshadweep','Puducherry'];
+
+  function norm(s){ return (s||'').toString().trim().toLowerCase(); }
+  function normalizeStateName(s) {
+    var x = norm(s);
+    if (!x) return '';
+    // Map common variants
+    if (x.indexOf('nct of delhi') >= 0 || x.indexOf('new delhi') >= 0) return 'Delhi';
+    if (x.indexOf('dadra') >= 0) return 'Dadra and Nagar Haveli and Daman and Diu';
+    if (x.indexOf('odisha') >= 0 || x.indexOf('orissa') >= 0) return 'Odisha';
+    if (x.indexOf('pondicherry') >= 0) return 'Puducherry';
+    // Try exact match against our list
+    for (var i=0;i<STATES_IN_INDIA.length;i++){
+      if (norm(STATES_IN_INDIA[i]) === x) return STATES_IN_INDIA[i];
+    }
+    // Title case fallback
+    return s;
+  }
+
+  var sel = document.getElementById('stateFilter');
+  function populateStates() {
+    if (!sel) return;
+    sel.innerHTML = '';
+    var ph = document.createElement('option');
+    ph.value = '';
+    ph.textContent = 'Select state';
+    sel.appendChild(ph);
+    STATES_IN_INDIA.forEach(function(st){
+      var o = document.createElement('option');
+      o.value = st; o.textContent = st;
+      sel.appendChild(o);
+    });
+  }
+
+  
+  // Map setup
+  var map, markersLayer;
+  function initMap() {
+    var el = document.getElementById('hotspotMap');
+    if (!el) return;
+    if (!map) {
+      map = L.map(el).setView([22.9734, 78.6569], 5);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19,
+        attribution: '&copy; OpenStreetMap'
+      }).addTo(map);
+      markersLayer = L.layerGroup().addTo(map);
+    } else {
+      markersLayer.clearLayers();
+    }
+  }
+
+  function colorFromPercent(pct) {
+    if (pct >= 70) return 'red';
+    if (pct >= 40) return 'orange';
+    return 'green';
+  }
+
+  function bandClass(pct) {
+    if (pct >= 70) return 'high';
+    if (pct >= 40) return 'medium';
+    return 'low';
+  }
+
+  function normalize(items) {
+    return (items || []).map(function(it){
+      return {
+        state_ut: normalizeStateName(it.state_ut || ''),
+        district: it.district || '',
+        disease: it.disease || '',
+        cases: Number(it.cases || 0),
+        lat: (typeof it.lat === 'number') ? it.lat : null,
+        lon: (typeof it.lon === 'number') ? it.lon : null,
+        percent: Number(it.percentage || it.percent || 0),
+        date: it.date || ''
+      };
+    });
+  }
+
+  var allData = [];
+  var month = null, year = null;
+
+  function render() {
+    var tbody = document.getElementById('predictionTbody');
+    if (!tbody) return;
+    var state = sel && sel.value ? sel.value : '';
+    var items = state ? allData.filter(function(it){ return it.state_ut === state; }) : [];
+
+    // Build table
+    if (!items.length) {
+      var msg = state ? 'No data for selected state' : 'Select a state to view predictions';
+      tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:#9ca3af;">' + msg + '</td></tr>';
+    } else {
+      var rows = items
+        .sort(function(a,b){ return b.percent - a.percent || b.cases - a.cases; })
+        .map(function(it){
+          var cls = bandClass(it.percent);
+          var districtClean = String(it.district||'').replace(/^[^A-Za-z0-9]+\s*/, '');
+          var dateStr = it.date || '';
+          return '<tr>'
+            + '<td><span class="risk-badge ' + cls + '">' + it.percent + '%</span></td>'
+            + '<td>' + districtClean + '</td>'
+            + '<td>' + it.disease + '</td>'
+            + '<td>' + (dateStr || 'N/A') + '</td>'
+            + '</tr>';
+        }).join('');
+      tbody.innerHTML = rows;
+    }
+
+    // Update map
+    if (map && markersLayer) {
+      markersLayer.clearLayers();
+      var bounds = [];
+      items.forEach(function(it){
+        if (typeof it.lat !== 'number' || typeof it.lon !== 'number') return;
+        var color = colorFromPercent(it.percent);
+        var popup = 'State/UT: ' + it.state_ut
+          + '<br>District: ' + it.district
+          + '<br>Disease: ' + it.disease
+          + '<br>Cases: ' + it.cases
+          + '<br>Outbreak %: ' + it.percent + '%';
+        L.circleMarker([it.lat, it.lon], {
+          radius: 8, color: color, fill: true, fillColor: color, fillOpacity: 0.7, weight: 3
+        }).bindPopup(popup).addTo(markersLayer);
+        bounds.push([it.lat, it.lon]);
+      });
+      if (bounds.length) {
+        try { map.fitBounds(bounds, { padding: [20,20] }); } catch(_) {}
+      } else {
+        try { map.setView([22.9734,78.6569], 5); } catch(_) {}
+      }
+    }
+  }
+
+  function refresh() {
+    return new Promise(function(resolve){
+      month = null; year = null;
+      allData = normalize(window.__PY_AREAS__ || []);
+      resolve();
+    });
+  }
+
+  function init() {
+    populateStates();
+    initMap();
+    refresh().then(function(){
+      render();
+    });
+    if (sel) sel.addEventListener('change', render);
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
+})();
+</script>

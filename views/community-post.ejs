@@ -1,0 +1,219 @@
+<div class="post-head">
+    <h2 class="page-title">Map plotting for water problems</h2>
+    <p class="subtitle">This map shows the plotting of the regions from where people make posts about their local water problems.</p>
+</div>
+
+<!-- Leaflet CSS/JS for map rendering -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+
+<style>
+  /* Map container styling */
+  #communityMap {
+    height: 420px;
+    width: 100%;
+    margin: 0 0 1.25rem 0;
+    border: 1px solid #e5e7eb; /* gray-200 */
+    border-radius: 10px;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+  }
+</style>
+
+<!-- Map goes first (just below the navbar) -->
+<div id="communityMap" aria-label="Community posts map"></div>
+
+<script>
+(function initCommunityMap() {
+  if (!window.L) return; // Leaflet not loaded
+
+  // Prepare posts with coordinates
+  const posts = <%- JSON.stringify((mapPosts || []).map(function(p) { 
+    return {
+      title: (p && p.title) || 'Untitled',
+      lat: (p && typeof p.latitude === 'number') ? p.latitude : ((p && p.latitude != null) ? Number(p.latitude) : null),
+      lon: (p && typeof p.longitude === 'number') ? p.longitude : ((p && p.longitude != null) ? Number(p.longitude) : null)
+    };
+  })) %>;
+
+  const points = (posts || []).filter(p => Number.isFinite(p.lat) && Number.isFinite(p.lon));
+  const mapEl = document.getElementById('communityMap');
+  if (!mapEl) return;
+
+  // Default view (India-centric)
+  const map = L.map(mapEl, { zoomControl: true }).setView([22.9734, 78.6569], 5);
+
+  // Base layer
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 19,
+    attribution: '&copy; OpenStreetMap contributors'
+  }).addTo(map);
+
+  if (points.length === 0) {
+    // Nothing to plot, keep default view
+    return;
+  }
+
+  const group = L.featureGroup();
+  points.forEach(p => {
+    const marker = L.circleMarker([p.lat, p.lon], {
+      radius: 10,
+      color: '#ac0707', // orange border
+      weight: 2,
+      fillColor: '#ff0000', // orange fill
+      fillOpacity: 0.85
+    });
+    marker.bindPopup(String(p.title || 'Untitled'));
+    marker.addTo(group);
+  });
+  group.addTo(map);
+  try {
+    map.fitBounds(group.getBounds().pad(0.25));
+  } catch (_) { /* ignore fit errors */ }
+})();
+</script>
+
+<div class="post-head">
+    <h2 class="page-title">Community Posts</h2>
+    <p class="subtitle">Field reports and advisories. Use the controls to mark posts as resolved or active.</p>
+</div>
+
+<div class="all-posts">
+  <% if ((thePosts || []).length === 0) { %>
+    <div class="no-posts">No posts yet.</div>
+  <% } %>
+  <% for (const e of thePosts) { %>
+    <article class="post-card <%= e.resolved ? 'is-resolved' : '' %>" data-id="<%= e._id %>">
+      <header class="post-card-header">
+        <div class="title-wrap">
+          <h2 class="post-title"><%= e.title %></h2>
+          <span class="badge <%= e.type %>"><%= e.type %></span>
+          <% if (e.resolved) { %>
+            <span class="status-badge">Resolved</span>
+          <% } else { %>
+            <span class="status-badge active">Active</span>
+          <% } %>
+        </div>
+        <div class="region-meta"><i class="fas fa-map-marker-alt"></i> <%= e.region %></div>
+      </header>
+
+      <section class="post-body">
+        <p><%= e.body %></p>
+      </section>
+
+      <section class="post-meta-grid">
+        <div>
+          <h3>Symptoms</h3>
+          <div class="chips">
+            <% (e.symptoms || []).forEach(function(s){ %>
+              <span class="chip"><%= s %></span>
+            <% }) %>
+          </div>
+        </div>
+        <div>
+          <h3>Main Water Source</h3>
+          <p class="kv"><i class="fas fa-tint"></i> <%= e.waterSource %></p>
+        </div>
+        <div>
+          <h3>Total Affected</h3>
+          <p class="kv"><i class="fas fa-users"></i> <%= e.affectedCount %></p>
+        </div>
+      </section>
+
+      <% if (isMaster) { %>
+        <section class="assignment">
+          <p class="kv">
+            <i class="fas fa-user-shield"></i>
+            Assigned Officer:
+            <span class="assigned-display"><%= (e.assignedOfficerId != null) ? e.assignedOfficerId : 'Unassigned' %></span>
+          </p>
+          <div class="assign-controls">
+            <input type="text" class="assign-input" placeholder="Officer ID" value="<%= e.assignedOfficerId != null ? e.assignedOfficerId : '' %>" />
+            <button class="btn assign-btn" data-action="assign">Assign</button>
+            <button class="btn clear-assign" data-action="clear">Clear</button>
+          </div>
+        </section>
+      <% } %>
+
+      <footer class="post-card-actions">
+        <% if (!e.resolved) { %>
+          <button class="btn resolve" data-action="resolve">Mark as Resolved</button>
+        <% } else { %>
+          <button class="btn unresolve" data-action="unresolve">Mark as Active</button>
+        <% } %>
+      </footer>
+    </article>
+  <% } %>
+</div>
+
+<script>
+// Toggle resolved/unresolved via API
+document.addEventListener('click', async (e) => {
+    const btn = e.target.closest('button.btn');
+    if (!btn) return;
+    const card = btn.closest('.post-card');
+    const id = card?.getAttribute('data-id');
+    const action = btn.getAttribute('data-action');
+    if (!id || !action) return;
+    const resolved = action === 'resolve';
+    btn.disabled = true;
+    try {
+        const res = await fetch(`/community-post/${id}/toggle`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ resolved })
+        });
+        if (res.ok) {
+            card.classList.toggle('is-resolved', resolved);
+            const footer = card.querySelector('.post-card-actions');
+            footer.innerHTML = resolved
+                ? '<button class="btn unresolve" data-action="unresolve">Mark as Active</button>'
+                : '<button class="btn resolve" data-action="resolve">Mark as Resolved</button>';
+            const status = card.querySelector('.status-badge');
+            status.textContent = resolved ? 'Resolved' : 'Active';
+            status.classList.toggle('active', !resolved);
+        }
+    } catch (err) {
+        console.error('toggle failed', err);
+    } finally {
+        btn.disabled = false;
+    }
+});
+</script>
+
+<script>
+// Assignment controls for Master
+document.addEventListener('click', async (evt) => {
+  const assignBtn = evt.target.closest('button.assign-btn');
+  const clearBtn = evt.target.closest('button.clear-assign');
+  if (!assignBtn && !clearBtn) return;
+
+  const card = evt.target.closest('.post-card');
+  const id = card?.getAttribute('data-id');
+  if (!id) return;
+
+  let officerId = null;
+  if (assignBtn) {
+    const input = card.querySelector('.assign-input');
+    const val = input ? String(input.value || '').trim() : '';
+    if (!val) return;
+    officerId = val;
+  }
+
+  try {
+    const res = await fetch(`/community-post/${id}/assign`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ officerId })
+    });
+    if (res.ok) {
+      const json = await res.json();
+      const display = card.querySelector('.assigned-display');
+      if (display) {
+        display.textContent = (json.assignedOfficerId != null) ? json.assignedOfficerId : 'Unassigned';
+      }
+    }
+  } catch (err) {
+    console.error('assignment failed', err);
+  }
+});
+</script>

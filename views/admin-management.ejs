@@ -1,0 +1,257 @@
+<style>
+  .admin-table{
+    background-color: white;
+    border: 2px solid #2563eb;
+    padding: 20px;
+    border-radius: 10px;
+  }
+
+  .create-admin{
+    background-color: white;
+    border: 2px solid rgb(207, 205, 205);
+    border-radius: 20px;
+  }
+</style>
+
+<div class="post-head">
+  <h2 class="page-title">Admin Management</h2>
+  <p class="subtitle">Create new admins and view existing admins. Only visible to Master.</p>
+</div>
+
+<section class="card create-admin" style="padding:1rem;margin-bottom:1rem;">
+  <h3 style="margin:0 0 0.75rem 0;">Create Admin</h3>
+  <form id="createAdminForm" class="form-grid" onsubmit="return false;">
+    <div class="form-row">
+      <label>Full Name</label>
+      <input type="text" name="fullName" required />
+    </div>
+    <div class="form-row">
+      <label>Email</label>
+      <input type="email" name="email" required />
+    </div>
+    <div class="form-row">
+      <label>Mobile</label>
+      <input type="tel" name="mobile" />
+    </div>
+    <div class="form-row">
+      <label>Password</label>
+      <input type="password" name="password" required />
+    </div>
+    <div class="form-row">
+      <label>State</label>
+      <input type="text" name="state" />
+    </div>
+    <div class="form-row">
+      <label>District</label>
+      <input type="text" name="district" />
+    </div>
+    <div class="form-row">
+      <label>Department</label>
+      <input type="text" name="department" />
+    </div>
+
+    <div class="form-actions">
+      <button class="btn" id="createAdminBtn" type="submit">Create Admin</button>
+    </div>
+  </form>
+  <div id="adminCreateMsg" style="margin-top:0.75rem;font-size:0.9rem;"></div>
+</section>
+
+<section class="card admin-table">
+  <h3 style="margin:0 0 0.75rem 0;">Existing Admins</h3>
+  <div class="table-responsive">
+    <table class="table" style="width:100%;border-collapse:collapse;">
+      <thead>
+        <tr>
+          <th style="text-align:left;padding:0.5rem;border-bottom:1px solid #e5e7eb;">ID</th>
+          <th style="text-align:left;padding:0.5rem;border-bottom:1px solid #e5e7eb;">Name</th>
+          <th style="text-align:left;padding:0.5rem;border-bottom:1px solid #e5e7eb;">Email</th>
+          <th style="text-align:left;padding:0.5rem;border-bottom:1px solid #e5e7eb;">State</th>
+          <th style="text-align:left;padding:0.5rem;border-bottom:1px solid #e5e7eb;">District</th>
+          <th style="text-align:left;padding:0.5rem;border-bottom:1px solid #e5e7eb;">Department</th>
+          <th style="text-align:left;padding:0.5rem;border-bottom:1px solid #e5e7eb;">Actions</th>
+        </tr>
+      </thead>
+      <tbody id="adminsTbody">
+        <% (admins || []).forEach(function(a){ %>
+          <tr data-id="<%= a.id %>">
+            <td style="padding:0.5rem;border-bottom:1px solid #f3f4f6;" class="c-id"><%= a.id %></td>
+            <td style="padding:0.5rem;border-bottom:1px solid #f3f4f6;" class="c-name"><%= a.name %></td>
+            <td style="padding:0.5rem;border-bottom:1px solid #f3f4f6;" class="c-email"><%= a.userEmail %></td>
+            <td style="padding:0.5rem;border-bottom:1px solid #f3f4f6;" class="c-state"><%= a.state || '' %></td>
+            <td style="padding:0.5rem;border-bottom:1px solid #f3f4f6;" class="c-district"><%= a.district || '' %></td>
+            <td style="padding:0.5rem;border-bottom:1px solid #f3f4f6;" class="c-dept"><%= a.department || '' %></td>
+            <td style="padding:0.5rem;border-bottom:1px solid #f3f4f6;">
+              <button class="btn btn-small edit-admin">Edit</button>
+              <button class="btn btn-small btn-danger delete-admin" style="background:#dc2626;color:#fff;">Delete</button>
+            </td>
+          </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- Simple inline edit modal -->
+<div id="editModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.4); align-items:center; justify-content:center;">
+  <div style="background:#fff; padding:1rem; border-radius:8px; width:100%; max-width:500px;">
+    <h3 style="margin-top:0;">Edit Admin</h3>
+    <form id="editAdminForm" onsubmit="return false;">
+      <input type="hidden" name="id" />
+      <div class="form-row"><label>Full Name</label><input type="text" name="fullName" required /></div>
+      <div class="form-row"><label>Email</label><input type="email" name="email" required /></div>
+      <div class="form-row"><label>Mobile</label><input type="tel" name="mobile" /></div>
+      <div class="form-row"><label>Password (leave blank to keep same)</label><input type="password" name="password" /></div>
+      <div class="form-row"><label>State</label><input type="text" name="state" /></div>
+      <div class="form-row"><label>District</label><input type="text" name="district" /></div>
+      <div class="form-row"><label>Department</label><input type="text" name="department" /></div>
+      <div class="form-actions" style="display:flex; gap:0.5rem;">
+        <button class="btn" id="saveEditBtn" type="submit">Save</button>
+        <button class="btn" type="button" id="cancelEditBtn" style="background:#e5e7eb;">Cancel</button>
+      </div>
+    </form>
+    <div id="editMsg" style="margin-top:0.5rem; font-size:0.9rem;"></div>
+  </div>
+</div>
+
+<script>
+(function(){
+  const form = document.getElementById('createAdminForm');
+  const btn = document.getElementById('createAdminBtn');
+  const msg = document.getElementById('adminCreateMsg');
+  const tbody = document.getElementById('adminsTbody');
+
+  form.addEventListener('submit', async function(){
+    msg.textContent = '';
+    btn.disabled = true;
+
+    const data = Object.fromEntries(new FormData(form).entries());
+    data.designation = 'admin';
+
+    try {
+      const res = await fetch('/admin/officers', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      });
+      const json = await res.json();
+      if (!res.ok || !json.success) {
+        throw new Error(json.message || 'Failed to create admin');
+      }
+      msg.style.color = '#065f46';
+      msg.textContent = 'Admin created successfully. ID: ' + (json.officer && json.officer.id);
+
+      // Append to table
+      const tr = document.createElement('tr');
+      tr.setAttribute('data-id', json.officer.id);
+      tr.innerHTML = `
+        <td style="padding:0.5rem;border-bottom:1px solid #f3f4f6;" class="c-id">${json.officer.id}</td>
+        <td style="padding:0.5rem;border-bottom:1px solid #f3f4f6;" class="c-name">${data.fullName}</td>
+        <td style="padding:0.5rem;border-bottom:1px solid #f3f4f6;" class="c-email">${data.email}</td>
+        <td style="padding:0.5rem;border-bottom:1px solid #f3f4f6;" class="c-state">${data.state || ''}</td>
+        <td style="padding:0.5rem;border-bottom:1px solid #f3f4f6;" class="c-district">${data.district || ''}</td>
+        <td style="padding:0.5rem;border-bottom:1px solid #f3f4f6;" class="c-dept">${data.department || ''}</td>
+        <td style="padding:0.5rem;border-bottom:1px solid #f3f4f6;">
+          <button class="btn btn-small edit-admin">Edit</button>
+          <button class="btn btn-small btn-danger delete-admin" style="background:#dc2626;color:#fff;">Delete</button>
+        </td>
+      `;
+      tbody.prepend(tr);
+      form.reset();
+    } catch (err) {
+      msg.style.color = '#991b1b';
+      msg.textContent = err.message;
+    } finally {
+      btn.disabled = false;
+    }
+  });
+
+  // Edit/Delete handlers
+  const editModal = document.getElementById('editModal');
+  const editForm = document.getElementById('editAdminForm');
+  const editMsg = document.getElementById('editMsg');
+  const cancelEditBtn = document.getElementById('cancelEditBtn');
+  const saveEditBtn = document.getElementById('saveEditBtn');
+
+  function openEditModal(row){
+    editMsg.textContent = '';
+    const id = row.querySelector('.c-id').textContent.trim();
+    editForm.id.value = id;
+    editForm.fullName.value = row.querySelector('.c-name').textContent.trim();
+    editForm.email.value = row.querySelector('.c-email').textContent.trim();
+    editForm.mobile.value = '';
+    editForm.password.value = '';
+    editForm.state.value = row.querySelector('.c-state').textContent.trim();
+    editForm.district.value = row.querySelector('.c-district').textContent.trim();
+    editForm.department.value = row.querySelector('.c-dept').textContent.trim();
+    editModal.style.display = 'flex';
+  }
+
+  cancelEditBtn.addEventListener('click', () => {
+    editModal.style.display = 'none';
+  });
+
+  tbody.addEventListener('click', async (e) => {
+    const btn = e.target.closest('button');
+    if (!btn) return;
+    const row = e.target.closest('tr');
+    const id = row.getAttribute('data-id');
+
+    if (btn.classList.contains('edit-admin')) {
+      openEditModal(row);
+      return;
+    }
+
+    if (btn.classList.contains('delete-admin')) {
+      if (!confirm('Delete this admin? This action cannot be undone.')) return;
+      try {
+        const res = await fetch(`/admin/officers/${encodeURIComponent(id)}`, { method: 'DELETE' });
+        const json = await res.json().catch(() => ({}));
+        if (!res.ok || json.success === false) {
+          throw new Error((json && json.message) || 'Failed to delete');
+        }
+        row.remove();
+      } catch (err) {
+        alert(err.message || 'Delete failed');
+      }
+    }
+  });
+
+  editForm.addEventListener('submit', async () => {
+    editMsg.textContent = '';
+    saveEditBtn.disabled = true;
+
+    const payload = Object.fromEntries(new FormData(editForm).entries());
+
+    try {
+      const res = await fetch(`/admin/officers/${encodeURIComponent(payload.id)}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const json = await res.json();
+      if (!res.ok || !json.success) {
+        throw new Error(json.message || 'Failed to update');
+      }
+
+      // Update row UI
+      const row = tbody.querySelector(`tr[data-id="${payload.id}"]`);
+      if (row) {
+        row.querySelector('.c-name').textContent = payload.fullName;
+        row.querySelector('.c-email').textContent = payload.email;
+        row.querySelector('.c-state').textContent = payload.state || '';
+        row.querySelector('.c-district').textContent = payload.district || '';
+        row.querySelector('.c-dept').textContent = payload.department || '';
+      }
+      editMsg.style.color = '#065f46';
+      editMsg.textContent = 'Updated successfully';
+      setTimeout(() => { editModal.style.display = 'none'; }, 500);
+    } catch (err) {
+      editMsg.style.color = '#991b1b';
+      editMsg.textContent = err.message || 'Update failed';
+    } finally {
+      saveEditBtn.disabled = false;
+    }
+  });
+})();
+</script>

@@ -1,0 +1,64 @@
+<div class="page-header">
+    <h2 class="page-title">Water Quality Monitoring</h2>
+    <div class="sensor-count">
+        <i class="fas fa-tint"></i>
+        <span><%= sensors.length %> Active Sensors</span>
+    </div>
+</div>
+
+<div class="sensors-grid">
+    <% sensors.forEach(sensor => { %>
+    <div class="sensor-card <%= sensor.status %>">
+        <div class="sensor-header">
+            <h3 class="sensor-location"><%= sensor.location %></h3>
+            <div class="sensor-status <%= sensor.status %>">
+                <i class="fas fa-circle"></i>
+                <span><%= sensor.status %></span>
+            </div>
+        </div>
+
+        <div class="sensor-readings">
+            <div class="reading-item">
+                <span class="reading-label">pH Level</span>
+                <span class="reading-value <%= sensor.pH >= 6.5 && sensor.pH <= 8.5 ? 'safe' : 'danger' %>">
+                    <%= sensor.pH %>
+                </span>
+            </div>
+
+            <div class="reading-item">
+                <span class="reading-label">Turbidity</span>
+                <span class="reading-value <%= sensor.turbidity < 5 ? 'safe' : 'danger' %>">
+                    <%= sensor.turbidity %> NTU
+                </span>
+            </div>
+
+            <div class="reading-item">
+                <span class="reading-label">Bacterial Risk</span>
+                <span class="reading-value <%= sensor.bacterial === 'safe' ? 'safe' : sensor.bacterial === 'moderate' ? 'warning' : 'danger' %>">
+                    <%= sensor.bacterial %>
+                </span>
+            </div>
+        </div>
+
+        <div class="sensor-footer">
+            <span class="last-updated">Last Updated: <%= sensor.lastUpdated %></span>
+        </div>
+    </div>
+    <% }); %>
+</div>
+
+<div class="water-trends">
+    <div class="dashboard-card">
+        <h3 class="card-title">Water Quality Trends</h3>
+        <div class="trends-placeholder">
+            <i class="fas fa-chart-line"></i>
+            <p>Real-time monitoring data visualization</p>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    initializeWaterQuality();
+});
+</script>
