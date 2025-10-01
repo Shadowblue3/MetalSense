@@ -501,195 +501,201 @@
     }
 
     * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+    }
+
+
+
+    .content-section {
+        max-width: 1203px;
+        margin: 0 auto;
+        background: white;
+        border-radius: 20px;
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+        overflow: hidden;
+        position: relative;
+    }
+
+    .faq-container {
+        padding: 20px;
+    }
+
+    .faq-item {
+        margin-bottom: 15px;
+        border-radius: 12px;
+        overflow: hidden;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        transition: transform 0.3s ease;
+    }
+
+    .faq-item:hover {
+        transform: translateY(-2px);
+    }
+
+    .faq-question {
+        background: aliceblue;
+        color: black;
+        padding: 20px;
+        cursor: pointer;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-size: 1.1em;
+        font-weight: bold;
+        transition: all 0.3s ease;
+    }
+
+    .faq-question .icon {
+        font-size: 1.2em;
+        transition: transform 0.3s ease;
+    }
+
+    .faq-question.active .icon {
+        transform: rotate(180deg);
+    }
+
+    .faq-answer {
+        background: #f8f9ff;
+        max-height: 0;
+        overflow: hidden;
+        transition: max-height 0.4s ease, padding 0.4s ease;
+        position: relative;
+    }
+
+    .faq-answer.active {
+        max-height: 1000px;
+        padding: 20px;
+    }
+
+    .faq-answer p {
+        line-height: 1.6;
+        color: #333;
+        margin-bottom: 15px;
+    }
+
+    .highlight {
+        background: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%);
+        padding: 2px 6px;
+        border-radius: 4px;
+        font-weight: bold;
+        color: #333;
+    }
+
+    .important-notice {
+        background: linear-gradient(135deg, #ff9a9e 0%, #fecfef 100%);
+        padding: 15px;
+        border-radius: 10px;
+        margin: 15px 0;
+        border-left: 4px solid #ff6b6b;
+    }
+
+    .important-notice h4 {
+        color: #d63031;
+        margin-bottom: 8px;
+        font-size: 1.1em;
+    }
+
+    .important-notice p {
+        color: #2d3436;
+        font-weight: 500;
+    }
+
+    /* Animated Water Drops */
+    .animated-water-drop {
+        position: absolute;
+        width: 12px;
+        height: 16px;
+        background: radial-gradient(ellipse at center, #00b4db 0%, #0083b0 100%);
+        border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%;
+        animation: waterFall 4s infinite linear;
+        opacity: 0.7;
+        z-index: 10;
+    }
+
+    @keyframes waterFall {
+        0% {
+            top: -20px;
+            opacity: 0;
         }
 
+        10% {
+            opacity: 0.7;
+        }
 
+        90% {
+            opacity: 0.7;
+        }
 
+        100% {
+            top: 100%;
+            opacity: 0;
+        }
+    }
+
+    /* Animated Virus Particles */
+    .animated-virus {
+        position: absolute;
+        width: 20px;
+        height: 20px;
+        background: radial-gradient(circle, #ff6b6b 30%, #ee5a52 70%);
+        border-radius: 50%;
+        animation: virusFloat 6s infinite ease-in-out;
+        z-index: 10;
+    }
+
+    .animated-virus::before,
+    .animated-virus::after {
+        content: '';
+        position: absolute;
+        width: 4px;
+        height: 4px;
+        background: #ff4757;
+        border-radius: 50%;
+    }
+
+    .animated-virus::before {
+        top: -2px;
+        left: 2px;
+    }
+
+    .animated-virus::after {
+        bottom: -2px;
+        right: 2px;
+    }
+
+    @keyframes virusFloat {
+
+        0%,
+        100% {
+            transform: translateY(0px) rotate(0deg);
+        }
+
+        50% {
+            transform: translateY(-20px) rotate(180deg);
+        }
+    }
+
+    @media (max-width: 768px) {
         .content-section {
-            max-width: 1203px;
-            margin: 0 auto;
-            background: white;
-            border-radius: 20px;
-            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
-            overflow: hidden;
-            position: relative;
+            margin: 10px;
+            border-radius: 15px;
         }
 
-        .faq-container {
+        .header {
             padding: 20px;
         }
 
-        .faq-item {
-            margin-bottom: 15px;
-            border-radius: 12px;
-            overflow: hidden;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-            transition: transform 0.3s ease;
-        }
-
-        .faq-item:hover {
-            transform: translateY(-2px);
+        .header h2 {
+            font-size: 1.8em;
         }
 
         .faq-question {
-            background: aliceblue;
-            color: black;
-            padding: 20px;
-            cursor: pointer;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            font-size: 1.1em;
-            font-weight: bold;
-            transition: all 0.3s ease;
-        }
-
-        .faq-question .icon {
-            font-size: 1.2em;
-            transition: transform 0.3s ease;
-        }
-
-        .faq-question.active .icon {
-            transform: rotate(180deg);
-        }
-
-        .faq-answer {
-            background: #f8f9ff;
-            max-height: 0;
-            overflow: hidden;
-            transition: max-height 0.4s ease, padding 0.4s ease;
-            position: relative;
-        }
-
-        .faq-answer.active {
-            max-height: 1000px;
-            padding: 20px;
-        }
-
-        .faq-answer p {
-            line-height: 1.6;
-            color: #333;
-            margin-bottom: 15px;
-        }
-
-        .highlight {
-            background: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%);
-            padding: 2px 6px;
-            border-radius: 4px;
-            font-weight: bold;
-            color: #333;
-        }
-
-        .important-notice {
-            background: linear-gradient(135deg, #ff9a9e 0%, #fecfef 100%);
             padding: 15px;
-            border-radius: 10px;
-            margin: 15px 0;
-            border-left: 4px solid #ff6b6b;
+            font-size: 1em;
         }
-
-        .important-notice h4 {
-            color: #d63031;
-            margin-bottom: 8px;
-            font-size: 1.1em;
-        }
-
-        .important-notice p {
-            color: #2d3436;
-            font-weight: 500;
-        }
-
-        /* Animated Water Drops */
-        .animated-water-drop {
-            position: absolute;
-            width: 12px;
-            height: 16px;
-            background: radial-gradient(ellipse at center, #00b4db 0%, #0083b0 100%);
-            border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%;
-            animation: waterFall 4s infinite linear;
-            opacity: 0.7;
-            z-index: 10;
-        }
-
-        @keyframes waterFall {
-            0% {
-                top: -20px;
-                opacity: 0;
-            }
-            10% {
-                opacity: 0.7;
-            }
-            90% {
-                opacity: 0.7;
-            }
-            100% {
-                top: 100%;
-                opacity: 0;
-            }
-        }
-
-        /* Animated Virus Particles */
-        .animated-virus {
-            position: absolute;
-            width: 20px;
-            height: 20px;
-            background: radial-gradient(circle, #ff6b6b 30%, #ee5a52 70%);
-            border-radius: 50%;
-            animation: virusFloat 6s infinite ease-in-out;
-            z-index: 10;
-        }
-
-        .animated-virus::before,
-        .animated-virus::after {
-            content: '';
-            position: absolute;
-            width: 4px;
-            height: 4px;
-            background: #ff4757;
-            border-radius: 50%;
-        }
-
-        .animated-virus::before {
-            top: -2px;
-            left: 2px;
-        }
-
-        .animated-virus::after {
-            bottom: -2px;
-            right: 2px;
-        }
-
-        @keyframes virusFloat {
-            0%, 100% {
-                transform: translateY(0px) rotate(0deg);
-            }
-            50% {
-                transform: translateY(-20px) rotate(180deg);
-            }
-        }
-
-        @media (max-width: 768px) {
-            .content-section {
-                margin: 10px;
-                border-radius: 15px;
-            }
-            
-            .header {
-                padding: 20px;
-            }
-            
-            .header h2 {
-                font-size: 1.8em;
-            }
-            
-            .faq-question {
-                padding: 15px;
-                font-size: 1em;
-            }
-        }
+    }
 </style>
 <div class="totalContent">
     <div class="slideContainer">
@@ -697,11 +703,10 @@
             <!-- Slide 1: Title -->
             <div class="slide slide1">
                 <div class="slide-content">
-                    <h1>💧 Water-Borne Diseases</h1>
-                    <p>Understanding the risks and protecting your health</p>
-                    <p style="font-size: 1.2em; margin-top: 30px;">Clean water saves lives - Let's learn how to stay
-                        safe!
-                    </p>
+                    <h1>⚗️ Metal Pollution in Water</h1>
+                    <p>Learn about metal contamination and how it affects water quality</p>
+                    <p style="font-size: 1.2em; margin-top: 30px;">Clean water is important — let's understand how to
+                        keep it safe!</p>
                 </div>
                 <div class="water-drop" style="left: 10%; animation-delay: 0s;"></div>
                 <div class="water-drop" style="left: 20%; animation-delay: 0.5s;"></div>
@@ -711,17 +716,17 @@
 
             <!-- Slide 2: Image 1 -->
             <div class="slide slide2">
-                <img src="/images/pic1.jpg" alt="Water-borne diseases information">
+                <img src="/images/pic1.png" alt="Water-borne diseases information">
             </div>
 
             <!-- Slide 3: Image 2 -->
             <div class="slide slide3">
-                <img src="/images/pic2.jpg" alt="Water-borne diseases information">
+                <img src="/images/pic2.png" alt="Water-borne diseases information">
             </div>
 
             <!-- Slide 4: Image 3 -->
             <div class="slide slide4">
-                <img src="/images/pic3.jpg" alt="Water-borne diseases information">
+                <img src="/images/pic3.png" alt="Water-borne diseases information">
             </div>
         </div>
 
@@ -740,128 +745,67 @@
 </div>
 
 <div class="page-header">
-    <h2 class="page-title">Health Surveillance Dashboard</h2>
-    <div class="last-updated">
-        Last updated: <span id="lastUpdated">
+    <h2 class="page-title">Water Quality Sampling Map</h2>
+    <div class="last-updated">Last updated: <span id="lastUpdated">
             <%= new Date().toLocaleString() %>
-        </span>
-    </div>
+        </span></div>
 </div>
 
 <div class="stats-grid">
     <div class="stat-card blue">
         <div class="stat-content">
             <div class="stat-info">
-                <p class="stat-label">Total Cases</p>
-                <p class="stat-value">
-                    <%= stats.totalCases %>
-                </p>
+                <p class="stat-label">Total Cases (All-time)</p>
+                <p class="stat-value"><%= (stats && stats.totalCases) || 0 %></p>
             </div>
-            <div class="stat-icon">
-                <i class="fas fa-users"></i>
-            </div>
-        </div>
-        <div class="stat-change">
-            <span class="change-badge up">+12%</span>
+            <div class="stat-icon"><i class="fas fa-database"></i></div>
         </div>
     </div>
-
-    <div class="stat-card red">
-        <div class="stat-content">
-            <div class="stat-info">
-                <p class="stat-label">Active Alerts</p>
-                <p class="stat-value">
-                    <%= stats.activeAlerts %>
-                </p>
-            </div>
-            <div class="stat-icon">
-                <i class="fas fa-exclamation-triangle"></i>
-            </div>
-        </div>
-        <div class="stat-change">
-            <span class="change-badge up">+5</span>
-        </div>
-    </div>
-
     <div class="stat-card green">
         <div class="stat-content">
             <div class="stat-info">
-                <p class="stat-label">Water Sources Monitored</p>
-                <p class="stat-value">
-                    <%= stats.waterSources %>
-                </p>
+                <p class="stat-label">User Posts</p>
+                <p class="stat-value"><%= (stats && stats.totalPosts) || 0 %></p>
             </div>
-            <div class="stat-icon">
-                <i class="fas fa-map-marker-alt"></i>
-            </div>
-        </div>
-        <div class="stat-change">
-            <span class="change-badge safe">98%</span>
+            <div class="stat-icon"><i class="fas fa-newspaper"></i></div>
         </div>
     </div>
-
     <div class="stat-card yellow">
         <div class="stat-content">
             <div class="stat-info">
-                <p class="stat-label">Current Risk Level</p>
-                <p class="stat-value">
-                    <%= stats.riskLevel %>
-                </p>
+                <p class="stat-label">Active Users</p>
+                <p class="stat-value"><%= (stats && stats.activeUsers) || 0 %></p>
             </div>
-            <div class="stat-icon">
-                <i class="fas fa-chart-line"></i>
-            </div>
-        </div>
-        <div class="stat-change">
-            <span class="change-badge stable">Stable</span>
+            <div class="stat-icon"><i class="fas fa-users"></i></div>
         </div>
     </div>
 </div>
 
-<div class="dashboard-grid">
-    <div class="dashboard-card">
-        <h3 class="card-title">Outbreak Hotspots</h3>
-        <div class="outbreak-map">
-            <div class="map-controls"
-                style="display:flex;justify-content:flex-end;gap:0.5rem;margin-bottom:0.5rem;align-items:center;">
-                <label for="outbreakMonthSelect" style="margin-right:0.5rem;">Month:</label>
-                <select id="outbreakMonthSelect"
-                    style="padding:0.35rem 0.5rem;border:1px solid #d1d5db;border-radius:0.375rem;background:#fff;"></select>
-            </div>
-            <div id="map"></div>
-            <div class="map-legend">
-                <div class="legend-item">
-                    <div class="legend-color high-risk"></div>
-                    <span>High Risk</span>
-                </div>
-                <div class="legend-item">
-                    <div class="legend-color medium-risk"></div>
-                    <span>Medium Risk</span>
-                </div>
-                <div class="legend-item">
-                    <div class="legend-color low-risk"></div>
-                    <span>Low Risk</span>
-                </div>
-            </div>
-        </div>
+<div class="dashboard-card">
+    <h3 class="card-title">Sampling Points</h3>
+    <div class="map-controls"
+        style="display:flex;gap:0.5rem;justify-content:flex-end;margin-bottom:0.5rem;align-items:center;">
+        <label for="sampleYearSelect">Year:</label>
+        <select id="sampleYearSelect"
+            style="padding:0.35rem 0.5rem;border:1px solid #d1d5db;border-radius:0.375rem;background:#fff;"></select>
+        <label for="sampleMonthSelect" style="margin-left:0.75rem;">Month:</label>
+        <select id="sampleMonthSelect"
+            style="padding:0.35rem 0.5rem;border:1px solid #d1d5db;border-radius:0.375rem;background:#fff;"></select>
     </div>
-
-    <div class="dashboard-card">
-        <h3 class="card-title">Trend Analysis</h3>
-        <div class="trend-chart">
-            <div class="chart-header">
-                <div class="chart-info">
-                    <i class="fas fa-calendar"></i>
-                    <span id="trendHeaderYear">Monthly Trend</span>
-                </div>
-                <div class="trend-indicator">
-                    <i class="fas fa-trending-up"></i>
-                    <span>+23% vs last year</span>
-                </div>
-            </div>
-            <div class="chart-container" id="trendChartContainer">
-            </div>
-        </div>
+    <div id="heavyMap" style="width:100%;height:520px;border:1px solid #e5e7eb;border-radius:8px;"></div>
+    <div class="map-legend" style="margin-top:0.5rem;display:flex;gap:1rem;align-items:center;">
+        <div class="legend-item"><span
+                style="display:inline-block;width:12px;height:12px;background:#DC2626;border-radius:2px;margin-right:6px;"></span>High
+            (>=4 metals exceed)</div>
+        <div class="legend-item"><span
+                style="display:inline-block;width:12px;height:12px;background:#F59E0B;border-radius:2px;margin-right:6px;"></span>Medium
+            (2-3)</div>
+        <div class="legend-item"><span
+                style="display:inline-block;width:12px;height:12px;background:#10B981;border-radius:2px;margin-right:6px;"></span>Low
+            (1)</div>
+        <div class="legend-item"><span
+                style="display:inline-block;width:12px;height:12px;background:#3B82F6;border-radius:2px;margin-right:6px;"></span>Background
+            (0)</div>
     </div>
 </div>
 
@@ -869,164 +813,124 @@
 
 <div class="content-section">
     <div class="header">
-        <h2>💧 Understanding Water-Borne diseases FAQ</h2>
+        <h2>⚗️ Understanding Metal Pollution in Water — FAQs</h2>
     </div>
 
     <div class="faq-container">
         <div class="faq-item">
             <div class="faq-question" onclick="toggleFAQ(this)">
-                <span>🌊 What Are Water-Borne Diseases?</span>
+                <span>⚗️ What Are Metal Indices in Water?</span>
                 <span class="icon">▼</span>
             </div>
             <div class="faq-answer">
-                <!-- Animated Water Drops for this section -->
                 <div class="animated-water-drop" style="left: 5%; animation-delay: 0s;"></div>
                 <div class="animated-water-drop" style="left: 25%; animation-delay: -1s;"></div>
                 <div class="animated-water-drop" style="left: 75%; animation-delay: -2s;"></div>
                 <div class="animated-water-drop" style="left: 95%; animation-delay: -3s;"></div>
 
-                <!-- Animated Virus Particles for this section -->
-                <div class="animated-virus" style="top: 15%; left: 10%; animation-delay: 0s;"></div>
-                <div class="animated-virus" style="top: 45%; left: 88%; animation-delay: -2s;"></div>
-
-                <p>Water-borne diseases are illnesses caused by <span class="highlight">pathogenic microorganisms</span>
-                    that are transmitted through contaminated water. These diseases affect millions of people worldwide
-                    and are particularly prevalent in areas with poor sanitation and limited access to clean drinking
-                    water. When we consume contaminated water or food prepared with unsafe water, harmful bacteria,
-                    viruses, parasites, and other pathogens enter our digestive system, causing severe health problems
-                    ranging from mild stomach upset to life-threatening conditions.</p>
+                <p>Metal indices are special numbers that help scientists and the public understand the level of harmful
+                    metals present in water. Metals like lead, arsenic, cadmium, and chromium can be dangerous to both
+                    human health and the environment when found in high amounts. Instead of checking each metal
+                    separately, scientists use these indices to combine all the information into one or two
+                    easy-to-understand values. This makes it simpler to know whether the water is safe to drink or if it
+                    needs treatment.</p>
             </div>
         </div>
 
         <div class="faq-item">
             <div class="faq-question" onclick="toggleFAQ(this)">
-                <span>🦠 How Do These Diseases Spread?</span>
+                <span>📊 Why Do We Calculate These Indices?</span>
                 <span class="icon">▼</span>
             </div>
             <div class="faq-answer">
-                <!-- Animated Water Drops for this section -->
                 <div class="animated-water-drop" style="left: 15%; animation-delay: -0.5s;"></div>
                 <div class="animated-water-drop" style="left: 65%; animation-delay: -1.5s;"></div>
                 <div class="animated-water-drop" style="left: 85%; animation-delay: -2.5s;"></div>
 
-                <!-- Animated Virus Particles for this section -->
-                <div class="animated-virus" style="top: 25%; left: 82%; animation-delay: -1s;"></div>
-                <div class="animated-virus" style="top: 65%; left: 12%; animation-delay: -3s;"></div>
-
-                <p>Water contamination occurs through various pathways. <span class="highlight">Human and animal
-                        waste</span> is the primary source of contamination, especially when proper sewage treatment is
-                    lacking. Industrial pollution, agricultural runoff, and poor waste management further compromise
-                    water quality. The transmission happens when people drink contaminated water, eat food washed or
-                    prepared with unsafe water, or come into contact with contaminated surfaces. Poor personal hygiene
-                    practices can accelerate the spread of these diseases within communities.</p>
-
-                <div class="important-notice">
-                    <h4>⚠️ Critical Health Alert</h4>
-                    <p>According to WHO, contaminated water causes over 3.4 million deaths annually, with children being
-                        the most vulnerable population!</p>
-                </div>
+                <p>Calculating metal indices gives a clear picture of water pollution that would otherwise require
+                    checking many different numbers. For example, each harmful metal has its own safe level. If we check
+                    them individually, it can be confusing. Metal indices like HEI, PLI, and NPI combine these values
+                    into a single score. This helps scientists, policymakers, and communities quickly compare water
+                    quality across different places and times. It also makes it easier to detect changes in pollution
+                    levels and take the necessary steps to protect health and the environment.</p>
             </div>
         </div>
 
         <div class="faq-item">
             <div class="faq-question" onclick="toggleFAQ(this)">
-                <span>🏥 Recognizing the Symptoms</span>
+                <span>🔍 What Do Key Metal Indices Mean?</span>
                 <span class="icon">▼</span>
             </div>
             <div class="faq-answer">
-                <!-- Animated Water Drops for this section -->
-                <div class="animated-water-drop" style="left: 35%; animation-delay: -0.8s;"></div>
-                <div class="animated-water-drop" style="left: 55%; animation-delay: -1.8s;"></div>
+                <div class="animated-water-drop" style="left: 20%; animation-delay: -0.8s;"></div>
+                <div class="animated-water-drop" style="left: 50%; animation-delay: -1.8s;"></div>
 
-                <!-- Animated Virus Particles for this section -->
-                <div class="animated-virus" style="top: 35%; left: 15%; animation-delay: -0.5s;"></div>
-                <div class="animated-virus" style="top: 55%; left: 85%; animation-delay: -2.5s;"></div>
-
-                <p>Early recognition of symptoms is crucial for timely treatment. Most water-borne diseases affect the
-                    <span class="highlight">digestive system</span> first, causing symptoms like diarrhea, vomiting, and
-                    stomach cramps. However, some diseases can affect other organs as well. Symptoms may appear within
-                    hours or take several days to manifest. Persistent diarrhea, especially with blood or mucus, high
-                    fever, severe dehydration, and yellowing of the skin or eyes are serious warning signs that require
-                    immediate medical attention.</p>
+                <p><b>HEI (Heavy Metal Evaluation Index)</b> measures the combined risk from all harmful metals in the
+                    water. It gives a single number that shows the overall danger level.</p>
+                <p><b>PLI (Pollution Load Index)</b> works like a “pollution scorecard” — it shows how polluted the
+                    water is compared to safe levels. If the PLI is above 1, it means pollution is present and may be
+                    unsafe.</p>
+                <p><b>NPI (Nemerow Pollution Index)</b> focuses on the most dangerous metal found in the water. Even if
+                    most metals are low, a high value for one harmful metal will result in a higher NPI, signaling a
+                    possible risk.</p>
+                <p>These indices are important because they make it easier for both scientists and the public to
+                    understand water safety without needing to check many numbers separately.</p>
             </div>
         </div>
 
         <div class="faq-item">
             <div class="faq-question" onclick="toggleFAQ(this)">
-                <span>🛡️ Prevention: Your Best Defense</span>
+                <span>💡 How Can I Know If My Water is Polluted?</span>
                 <span class="icon">▼</span>
             </div>
             <div class="faq-answer">
-                <!-- Animated Water Drops for this section -->
-                <div class="animated-water-drop" style="left: 20%; animation-delay: -0.3s;"></div>
-                <div class="animated-water-drop" style="left: 45%; animation-delay: -1.3s;"></div>
-                <div class="animated-water-drop" style="left: 80%; animation-delay: -2.3s;"></div>
+                <div class="animated-water-drop" style="left: 25%; animation-delay: -0.3s;"></div>
+                <div class="animated-water-drop" style="left: 60%; animation-delay: -1.3s;"></div>
 
-                <!-- Animated Virus Particles for this section -->
-                <div class="animated-virus" style="top: 20%; left: 70%; animation-delay: -1.5s;"></div>
-                <div class="animated-virus" style="top: 60%; left: 25%; animation-delay: -3.5s;"></div>
-
-                <p>The good news is that water-borne diseases are <span class="highlight">highly preventable</span> with
-                    proper precautions. The golden rule is simple: "Boil it, cook it, peel it, or forget it!" This means
-                    drinking only boiled or bottled water, eating hot freshly-cooked food, and consuming fruits you can
-                    peel yourself. Personal hygiene plays a vital role in prevention. Wash your hands frequently with
-                    soap and clean water, especially before eating and after using the toilet. Avoid ice cubes from
-                    unknown sources, street vendor food, and raw vegetables in areas with questionable water quality.
-                </p>
+                <p>The best way to know if your water is polluted is to test it in a laboratory. Labs measure the levels
+                    of various metals and compare them to safe limits. These values are then used to calculate indices
+                    like HEI, PLI, and NPI. A higher score generally means higher pollution. If your local water supply
+                    is tested regularly, the results may be available through public health agencies or environmental
+                    websites. Being aware of these results helps communities take action to improve water quality.</p>
             </div>
         </div>
 
         <div class="faq-item">
             <div class="faq-question" onclick="toggleFAQ(this)">
-                <span>🚨 When to Seek Medical Help</span>
+                <span>🛡️ How Can We Keep Water Safe?</span>
                 <span class="icon">▼</span>
             </div>
             <div class="faq-answer">
-                <!-- Animated Water Drops for this section -->
                 <div class="animated-water-drop" style="left: 10%; animation-delay: -0.7s;"></div>
                 <div class="animated-water-drop" style="left: 90%; animation-delay: -1.7s;"></div>
 
-                <!-- Animated Virus Particles for this section -->
-                <div class="animated-virus" style="top: 30%; left: 60%; animation-delay: -0.8s;"></div>
-                <div class="animated-virus" style="top: 70%; left: 40%; animation-delay: -2.8s;"></div>
-
-                <p>While mild symptoms may resolve on their own, certain signs indicate the need for immediate medical
-                    attention. <span class="highlight">Severe dehydration</span> is particularly dangerous, especially
-                    in children and elderly individuals. Signs include dry mouth, sunken eyes, decreased urination, and
-                    dizziness. Don't wait if you experience bloody stools, high fever above 101°F (38.3°C), severe
-                    abdominal pain, signs of jaundice, or if symptoms worsen or persist for more than 24-48 hours. Quick
-                    medical intervention can prevent complications and ensure faster recovery.</p>
-
-                <div class="important-notice">
-                    <h4>🆘 Emergency Warning Signs</h4>
-                    <p>Call for immediate medical help if you experience severe dehydration, bloody diarrhea, high
-                        fever, or persistent vomiting!</p>
-                </div>
+                <p>Keeping water safe requires effort from both individuals and communities. Industries should treat
+                    wastewater before releasing it into rivers. Farmers should limit the use of harmful chemicals that
+                    can reach water sources. Proper sewage treatment and reducing waste dumping are essential. As
+                    individuals, we can help by avoiding throwing garbage or chemicals into rivers and by using water
+                    purification methods at home. Supporting local water safety programs and staying informed about
+                    water quality reports also plays a big role in keeping water safe.</p>
             </div>
         </div>
 
         <div class="faq-item">
             <div class="faq-question" onclick="toggleFAQ(this)">
-                <span>💪 Stay Safe, Stay Healthy</span>
+                <span>🔎 Why Is This Important for Everyone?</span>
                 <span class="icon">▼</span>
             </div>
             <div class="faq-answer">
-                <!-- Animated Water Drops for this section -->
                 <div class="animated-water-drop" style="left: 30%; animation-delay: -0.2s;"></div>
                 <div class="animated-water-drop" style="left: 70%; animation-delay: -1.2s;"></div>
 
-                <!-- Animated Virus Particles for this section -->
-                <div class="animated-virus" style="top: 25%; left: 50%; animation-delay: -0.3s;"></div>
-                <div class="animated-virus" style="top: 75%; left: 80%; animation-delay: -2.3s;"></div>
-
-                <p>Remember that prevention is always better than cure. By following simple hygiene practices and being
-                    cautious about water and food sources, you can protect yourself and your loved ones from water-borne
-                    diseases. Stay informed, stay vigilant, and don't hesitate to seek medical help when needed. Clean
-                    water and good hygiene are fundamental rights that everyone deserves - let's work together to make
-                    them accessible to all.</p>
+                <p>Water is a vital resource for life — for drinking, cooking, farming, and supporting nature. Metal
+                    contamination in water can harm health, damage crops, and disrupt ecosystems. By understanding metal
+                    indices, we get a clear picture of water quality, which helps in protecting health and preserving
+                    the environment. Everyone benefits from clean water, so being aware and taking action helps ensure
+                    safe water for future generations.</p>
             </div>
         </div>
     </div>
+
 </div>
 
 
@@ -1110,9 +1014,7 @@
         }
     });
     document.addEventListener('DOMContentLoaded', function () {
-        initializeCharts();
-        initializeMap();
-        startRealTimeUpdates();
+        // Removed health surveillance charts/map initializers
     });
 
     function toggleFAQ(element) {
@@ -1150,4 +1052,4 @@
     });
 </script>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script src="/js/map.js"></script>
+<script src="/js/heavy-map.js"></script>

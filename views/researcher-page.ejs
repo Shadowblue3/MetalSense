@@ -26,6 +26,12 @@
 
     <div style="display:grid;grid-template-columns:1fr;gap:1rem;margin-top:1rem;">
       <div class="card" style="padding:0.5rem;">
+        <h4 style="margin:0.5rem 0;">Top Areas by Average PLI (Server-side Plot)</h4>
+        <div style="width:100%;overflow:auto;text-align:center;">
+          <img src="<%= typeof plotUrl !== 'undefined' ? (plotUrl + (plotUrl.includes('?') ? '&' : '?') + 'index=PLI&by=state&chart=bar&top=10') : '' %>" alt="Indices Plot" style="max-width:100%;height:auto;border:1px solid #e5e7eb;border-radius:6px;"/>
+        </div>
+      </div>
+      <div class="card" style="padding:0.5rem;">
         <h4 style="margin:0.5rem 0;">Index Distribution</h4>
         <canvas id="chartIndexDist" height="120"></canvas>
       </div>
@@ -203,39 +209,60 @@
     <form id="threadForm" method="post" action="/r/communications" class="form-grid">
       <div class="form-row">
         <label>Title</label>
-        <input type="text" name="title" required />
+        <input type="text" name="title" required placeholder="Enter a descriptive title" />
       </div>
       <div class="form-row">
         <label>Body</label>
-        <textarea name="body" required style="min-height:100px;"></textarea>
+        <textarea name="body" required style="min-height:140px;" placeholder="Write your research discussion or question..."></textarea>
       </div>
-      <div class="form-actions"><button class="btn" type="submit">Create Thread</button></div>
+      <div class="form-actions" style="display:flex;justify-content:flex-end;">
+        <button class="btn" type="submit"><i class="fas fa-paper-plane"></i> Create Thread</button>
+      </div>
     </form>
   </section>
 
   <section class="card" style="padding:1rem;">
     <h3 style="margin-top:0;">Threads</h3>
     <% if (!threads || !threads.length) { %>
-      <p>No threads yet.</p>
+      <div style="padding:0.5rem;color:#6b7280;">No threads yet.</div>
     <% } %>
+    <div style="display:flex;flex-direction:column;gap:0.75rem;">
     <% (threads || []).forEach(function(t){ %>
-      <article class="card" style="padding:0.75rem;margin:0.5rem 0;">
-        <h4 style="margin:0 0 0.25rem 0;"><%= t.title %></h4>
-        <p><%= t.body %></p>
-        <details>
-          <summary>Comments (<%= (t.comments||[]).length %>)</summary>
-          <ul style="padding-left:1rem;">
-            <% (t.comments || []).forEach(function(c){ %>
-              <li style="margin:0.25rem 0;"><b><%= c.authorName || c.authorRole || 'user' %>:</b> <%= c.text %></li>
-            <% }) %>
-          </ul>
-        </details>
-        <form method="post" action="/r/communications/<%= t._id %>/comment" style="margin-top:0.5rem;display:flex;gap:0.5rem;">
-          <input type="text" name="text" placeholder="Add a comment" required style="padding:0.35rem;border:1px solid #d1d5db;border-radius:6px;flex:1;"/>
-          <button type="submit" class="btn">Comment</button>
-        </form>
+      <article class="card" style="padding:0.9rem;border:1px solid #e5e7eb;border-radius:10px;background:#fff;">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:0.5rem;flex-wrap:wrap;">
+          <div>
+            <h4 style="margin:0;font-size:1.05rem;color:#111827;"><%= t.title %></h4>
+            <div style="font-size:0.85rem;color:#6b7280;margin-top:0.2rem;">
+              <span><i class="fas fa-id-badge"></i> ID: <%= t.authorId || '-' %></span>
+              <% if (t.state || t.district) { %>
+                <span style="margin-left:0.75rem;"><i class="fas fa-location-dot"></i> <%= t.state || '-' %> / <%= t.district || '-' %></span>
+              <% } %>
+            </div>
+          </div>
+          <div style="font-size:0.85rem;color:#6b7280;">Comments: <%= (t.comments||[]).length %></div>
+        </div>
+        <p style="margin:0.5rem 0 0.75rem 0;color:#374151;white-space:pre-wrap;"><%= t.body %></p>
+        <div style="border-top:1px solid #f3f4f6;padding-top:0.5rem;">
+          <% if ((t.comments||[]).length) { %>
+            <ul style="list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:0.35rem;">
+              <% (t.comments || []).forEach(function(c){ %>
+                <li style="padding:0.4rem 0.5rem;border:1px solid #f3f4f6;border-radius:8px;background:#fafafa;">
+                  <div style="font-size:0.85rem;color:#374151;"><b><%= c.authorName || c.authorRole || 'user' %>:</b> <%= c.text %></div>
+                </li>
+              <% }) %>
+            </ul>
+          <% } else { %>
+            <div style="color:#6b7280;font-size:0.95rem;">No comments yet.</div>
+          <% } %>
+
+          <form method="post" action="/r/communications/<%= t._id %>/comment" style="margin-top:0.6rem;display:flex;gap:0.5rem;align-items:center;">
+            <input type="text" name="text" placeholder="Add a comment" required style="padding:0.5rem 0.6rem;border:1px solid #d1d5db;border-radius:8px;flex:1;"/>
+            <button type="submit" class="btn"><i class="fas fa-comment"></i> Comment</button>
+          </form>
+        </div>
       </article>
     <% }) %>
+    </div>
   </section>
 <% } %>
 

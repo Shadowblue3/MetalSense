@@ -9,6 +9,7 @@ const postSchema = new Schema({
     type: String,
     waterSource: String,
     affectedCount: String,
+    imageUrl: String,
     resolved: { type: Boolean, default: false },
     latitude: Number,
     longitude: Number,

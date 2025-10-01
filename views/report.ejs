@@ -52,7 +52,7 @@
       <span>The post is published successfully</span>
     </div>
     <% } %>
-      <form id="postForm" action="/report" method="POST" class="report-form" onsubmit="submitCommunityPost(event)">
+      <form id="postForm" action="/report" method="POST" enctype="multipart/form-data" class="report-form">
         <div class="form-grid">
           <div class="form-group">
             <label for="postTitle" class="form-label">
@@ -120,6 +120,14 @@
           </label>
           <textarea id="postBody" name="body" rows="6" class="form-input" placeholder="Write the advisory or update..."
             required></textarea>
+        </div>
+        <div class="form-group">
+          <label for="image" class="form-label">
+            <i class="fas fa-image"></i>
+            Attach Image (optional)
+          </label>
+          <input type="file" id="image" name="image" accept="image/*" class="form-input" />
+          <small style="color:#6b7280;">Max ~5MB recommended.</small>
         </div>
         <div class="form-group">
           <label class="form-label">

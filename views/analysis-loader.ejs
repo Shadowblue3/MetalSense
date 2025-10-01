@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Loading Real-time Analysis</title>
+  <link rel="stylesheet" href="/css/loader.css" />
+  <style>
+    .loader-title { margin-top: 1rem; }
+    .loader-sub { opacity: 0.8; }
+  </style>
+</head>
+<body>
+  <div class="loader-wrap">
+    <div class="robot">
+      <div class="robot-head">
+        <div class="eyes">
+          <span class="eye left"></span>
+          <span class="eye right"></span>
+        </div>
+        <div class="antenna"></div>
+      </div>
+      <div class="robot-body">
+        <div class="chest"></div>
+      </div>
+      <div class="wheel"></div>
+    </div>
+
+    <h1 class="loader-title">Preparing Real-time Analysis…</h1>
+    <p class="loader-sub">Fetching heavy metal indices, rendering map and charts</p>
+    <div class="progress">
+      <div class="bar"></div>
+    </div>
+  </div>
+
+  <script>
+    (async function go() {
+      try {
+        const url = new URL(window.location.href);
+        url.searchParams.set('ready', '1');
+        const res = await fetch(url.toString(), { headers: { 'Accept': 'text/html' } });
+        const html = await res.text();
+        document.open();
+        document.write(html);
+        document.close();
+      } catch (e) {
+        console.error('Failed to load analysis page', e);
+      }
+    })();
+  </script>
+</body>
+</html>

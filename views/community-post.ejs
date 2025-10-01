@@ -98,6 +98,11 @@
 
       <section class="post-body">
         <p><%= e.body %></p>
+        <% if (e.imageUrl) { %>
+          <div style="margin-top:0.5rem;">
+            <img src="<%= e.imageUrl %>" alt="attached image" style="max-width:100%;height:auto;border-radius:8px;border:1px solid #e5e7eb;"/>
+          </div>
+        <% } %>
       </section>
 
       <section class="post-meta-grid">

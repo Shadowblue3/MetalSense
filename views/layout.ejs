@@ -61,16 +61,13 @@
     <nav class="navigation">
         <div class="container">
             <div class="nav-items">
-                <% if (!user || (user && user.role !== 'government' && user.role !== 'researcher')) { %>
+                <% if (!user || (user && user.role !== 'government' && user.role !== 'researcher' && user.role !== 'ngo')) { %>
                 <a href="dashboard?lang=<%= language %>" class="nav-item <%= activeTab === 'dashboard' ? 'active' : '' %>">
                     <i class="fas fa-chart-bar"></i>
                     <span><%= (user && user.role === 'general') ? 'Home' : 'Dashboard' %></span>
                 </a>
 
-                <a href="/outbreak-prediction?lang=<%= language %>" class="nav-item <%= activeTab === 'prediction' ? 'active' : '' %>">
-                    <i class="fas fa-biohazard"></i>
-                    <span>Outbreak Prediction</span>
-                </a>
+                
                 <% } %>
 
                 <% if (user && user.role === 'general') { %>
@@ -93,6 +90,10 @@
                     <i class="fas fa-tint"></i>
                     <span>Water Quality</span>
                 </a>
+                <a href="/update-data?lang=<%= language %>" class="nav-item <%= activeTab === 'update-data' ? 'active' : '' %>">
+                    <i class="fas fa-database"></i>
+                    <span>Update-data</span>
+                </a>
                 <a href="/communications?lang=<%= language %>" class="nav-item <%= activeTab === 'communications' ? 'active' : '' %>">
                     <i class="fas fa-comments"></i>
                     <span>Communications</span>
@@ -111,6 +112,21 @@
                 <a href="/research-posts?lang=<%= language %>" class="nav-item <%= activeTab === 'research-posts' ? 'active' : '' %>">
                     <i class="fas fa-book"></i>
                     <span>Research Posts</span>
+                </a>
+                <a href="/policies?lang=<%= language %>" class="nav-item <%= activeTab === 'policies' ? 'active' : '' %>">
+                    <i class="fas fa-scale-balanced"></i>
+                    <span>Policies</span>
+                </a>
+                <% } %>
+
+                <% if (user && user.role === 'ngo') { %>
+                <a href="/ngo/dashboard?lang=<%= language %>" class="nav-item <%= activeTab === 'ngo-dashboard' ? 'active' : '' %>">
+                    <i class="fas fa-gauge"></i>
+                    <span>Dashboard</span>
+                </a>
+                <a href="/ngo/policies?lang=<%= language %>" class="nav-item <%= activeTab === 'ngo-policies' ? 'active' : '' %>">
+                    <i class="fas fa-scale-balanced"></i>
+                    <span>See Policies</span>
                 </a>
                 <% } %>
 

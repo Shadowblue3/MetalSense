@@ -1,0 +1,164 @@
+<section>
+  <h2 style="margin:0 0 1rem 0;">Update Heavy Sample Data</h2>
+  <p style="margin:0 0 1rem 0; color:#4b5563;">Create new or edit existing heavy metal sampling records. Search by location, year, or month, then update fields according to the schema.</p>
+
+  <div style="display:flex; gap:1rem; flex-wrap:wrap; align-items:flex-start;">
+    <div style="flex:1 1 360px; min-width:320px;">
+      <div style="border:1px solid #e5e7eb; border-radius:8px; padding:12px;">
+        <h3 style="margin:0 0 0.75rem 0; font-size:1rem;">Search Records</h3>
+        <div style="display:grid; grid-template-columns:1fr 100px 100px auto; gap:8px; align-items:end;">
+          <div>
+            <label>Location</label>
+            <input id="srch_location" type="text" placeholder="e.g. Guwahati" style="width:100%;" />
+          </div>
+          <div>
+            <label>Year</label>
+            <input id="srch_year" type="number" min="1900" step="1" />
+          </div>
+          <div>
+            <label>Month</label>
+            <input id="srch_month" type="number" min="1" max="12" step="1" />
+          </div>
+          <div>
+            <button id="btn_search" class="btn btn-primary">Search</button>
+          </div>
+        </div>
+        <div id="results" style="max-height:280px; overflow:auto; margin-top:10px; border-top:1px dashed #e5e7eb; padding-top:8px;"></div>
+      </div>
+    </div>
+
+    <div style="flex:2 1 520px; min-width:360px;">
+      <div style="border:1px solid #e5e7eb; border-radius:8px; padding:12px;">
+        <h3 style="margin:0 0 0.75rem 0; font-size:1rem;">Record Editor</h3>
+        <form id="sampleForm" onsubmit="return false;">
+          <input type="hidden" id="doc_id" />
+          <div style="display:grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap:10px;">
+            <div><label>sample_id</label><input id="sample_id" type="number" /></div>
+            <div style="grid-column: span 2;"><label>location</label><input id="location" type="text" /></div>
+            <div><label>year</label><input id="year" type="number" /></div>
+            <div><label>month</label><input id="month" type="number" min="1" max="12" /></div>
+            <div><label>latitude</label><input id="latitude" type="number" step="any" /></div>
+            <div><label>longitude</label><input id="longitude" type="number" step="any" /></div>
+            <div><label>pH</label><input id="pH" type="number" step="any" /></div>
+            <div><label>EC</label><input id="EC" type="number" step="any" /></div>
+            <div><label>As</label><input id="As" type="number" step="any" /></div>
+            <div><label>Cd</label><input id="Cd" type="number" step="any" /></div>
+            <div><label>Cr</label><input id="Cr" type="number" step="any" /></div>
+            <div><label>Cu</label><input id="Cu" type="number" step="any" /></div>
+            <div><label>Pb</label><input id="Pb" type="number" step="any" /></div>
+            <div><label>Zn</label><input id="Zn" type="number" step="any" /></div>
+            <div><label>Ni</label><input id="Ni" type="number" step="any" /></div>
+
+            <div><label>Background_As</label><input id="Background_As" type="number" step="any" /></div>
+            <div><label>Background_Cd</label><input id="Background_Cd" type="number" step="any" /></div>
+            <div><label>Background_Cr</label><input id="Background_Cr" type="number" step="any" /></div>
+            <div><label>Background_Cu</label><input id="Background_Cu" type="number" step="any" /></div>
+            <div><label>Background_Pb</label><input id="Background_Pb" type="number" step="any" /></div>
+            <div><label>Background_Zn</label><input id="Background_Zn" type="number" step="any" /></div>
+            <div><label>Background_Ni</label><input id="Background_Ni" type="number" step="any" /></div>
+          </div>
+
+          <div style="display:flex; gap:8px; margin-top:12px;">
+            <button id="btn_new" class="btn btn-secondary" type="button">New</button>
+            <button id="btn_save" class="btn btn-primary" type="button">Save</button>
+            <span id="status" style="margin-left:auto; color:#059669;"></span>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</section>
+
+<script>
+(function(){
+  const $ = (id) => document.getElementById(id);
+  const fields = [
+    'sample_id','location','latitude','longitude','year','month','pH','EC',
+    'As','Cd','Cr','Cu','Pb','Zn','Ni',
+    'Background_As','Background_Cd','Background_Cr','Background_Cu','Background_Pb','Background_Zn','Background_Ni'
+  ];
+
+  function readForm(){
+    const obj = {};
+    fields.forEach(k => {
+      const el = $(k);
+      if (!el) return;
+      const v = el.value;
+      if (v === '' || v === null) return;
+      if (['location'].includes(k)) obj[k] = v;
+      else obj[k] = Number(v);
+    });
+    return obj;
+  }
+  function writeForm(doc){
+    $('doc_id').value = doc && doc._id ? String(doc._id) : '';
+    fields.forEach(k => {
+      const el = $(k); if (!el) return;
+      const v = doc && (typeof doc[k] !== 'undefined') ? doc[k] : '';
+      el.value = v === null || typeof v === 'undefined' ? '' : v;
+    });
+  }
+  function clearForm(){ writeForm({}); }
+
+  function renderList(list){
+    const container = $('results');
+    if (!list || !list.length) {
+      container.innerHTML = '<div style="color:#6b7280;">No results</div>';
+      return;
+    }
+    const rows = list.map(item => `
+      <div class="list-row" data-id="${item._id}" style="display:flex; gap:8px; align-items:center; padding:6px; border:1px solid #e5e7eb; border-radius:6px; margin-bottom:6px; cursor:pointer;">
+        <div style="flex:1 1 auto;">
+          <div style="font-weight:600;">${escapeHtml(item.location || '')}</div>
+          <div style="font-size:12px; color:#6b7280;">${item.year || ''} / ${item.month || ''} • (${item.latitude || ''}, ${item.longitude || ''})</div>
+        </div>
+        <button class="btn btn-secondary btn-small" data-edit="${item._id}">Edit</button>
+      </div>`).join('');
+    container.innerHTML = rows;
+    container.querySelectorAll('[data-edit]').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const id = e.currentTarget.getAttribute('data-edit');
+        const rec = list.find(x => String(x._id) === String(id));
+        if (rec) writeForm(rec);
+      });
+    });
+  }
+
+  function escapeHtml(s){
+    return String(s||'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[c]));
+  }
+
+  async function doSearch(){
+    const q = new URLSearchParams();
+    const loc = $('srch_location').value.trim();
+    const yr = $('srch_year').value.trim();
+    const mo = $('srch_month').value.trim();
+    if (loc) q.set('location', loc);
+    if (yr) q.set('year', yr);
+    if (mo) q.set('month', mo);
+    const res = await fetch('/api/heavy-samples/search?' + q.toString(), { credentials: 'same-origin' });
+    const json = await res.json();
+    renderList(json.list || []);
+  }
+
+  async function save(){
+    const id = $('doc_id').value.trim();
+    const payload = readForm();
+    const opts = { method: id ? 'PUT' : 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify(payload) };
+    const url = id ? ('/api/heavy-samples/' + encodeURIComponent(id)) : '/api/heavy-samples';
+    const res = await fetch(url, opts);
+    const json = await res.json();
+    $('status').textContent = json && json.success ? 'Saved' : 'Failed';
+    setTimeout(() => $('status').textContent = '', 2000);
+    if (json && json.doc) writeForm(json.doc);
+    await doSearch();
+  }
+
+  $('btn_search').addEventListener('click', doSearch);
+  $('btn_save').addEventListener('click', save);
+  $('btn_new').addEventListener('click', clearForm);
+
+  // initial
+  doSearch().catch(()=>{});
+})();
+</script>

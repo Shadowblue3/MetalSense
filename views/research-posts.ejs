@@ -16,6 +16,30 @@
         <% if (p.abstract) { %>
           <p style="margin-top:0.5rem;"><%= p.abstract %></p>
         <% } %>
+
+        <% if (p.content) { %>
+          <% const pdfUrl = String(p.content||''); %>
+          <% if (pdfUrl.toLowerCase().endsWith('.pdf') || pdfUrl.includes('/uploads/research/')) { %>
+            <div style="margin-top:0.75rem;">
+              <div style="height:600px;border:1px solid #e5e7eb;border-radius:8px;overflow:hidden;background:#f9fafb;">
+                <iframe src="<%= pdfUrl %>#zoom=page-width" title="PDF preview" style="width:100%;height:100%;border:0;" allow="fullscreen"></iframe>
+              </div>
+              <div style="margin-top:0.5rem;display:flex;gap:0.75rem;align-items:center;">
+                <a href="<%= pdfUrl %>" class="btn" style="display:inline-flex;align-items:center;gap:0.5rem;padding:0.4rem 0.6rem;border:1px solid #d1d5db;border-radius:6px;text-decoration:none;color:#111827;background:#fff;" download>
+                  <i class="fas fa-download"></i> Download PDF
+                </a>
+                <a href="<%= pdfUrl %>" class="btn" style="display:inline-flex;align-items:center;gap:0.5rem;padding:0.4rem 0.6rem;border:1px solid #d1d5db;border-radius:6px;text-decoration:none;color:#111827;background:#fff;" target="_blank" rel="noopener">
+                  <i class="fas fa-external-link-alt"></i> Open in new tab
+                </a>
+              </div>
+            </div>
+          <% } else { %>
+            <div style="margin-top:0.5rem;">
+              <a href="<%= pdfUrl %>" target="_blank" rel="noopener" style="color:#2563eb;">View Attachment</a>
+            </div>
+          <% } %>
+        <% } %>
+
         <% if (p.tags && p.tags.length) { %>
           <div style="margin-top:0.35rem; font-size:0.85rem; color:#374151;">Tags: <%= p.tags.join(', ') %></div>
         <% } %>

@@ -17,11 +17,12 @@ const bcrypt = require('bcrypt');
 const nodemailer = require('nodemailer');
 const fs = require('fs');
 const multer = require('multer');
+const cloudinary = require('cloudinary').v2;
 
 // Research uploads (PDF)
 const uploadDir = path.join(__dirname, 'public', 'uploads', 'research');
 try { fs.mkdirSync(uploadDir, { recursive: true }); } catch (e) {}
-const storage = multer.diskStorage({
+const storagePdf = multer.diskStorage({
   destination: uploadDir,
   filename: (req, file, cb) => {
     const unique = Date.now() + '-' + Math.round(Math.random() * 1e9);
@@ -29,13 +30,40 @@ const storage = multer.diskStorage({
     cb(null, unique + '-' + name);
   }
 });
-const upload = multer({
-  storage,
+const uploadPdf = multer({
+  storage: storagePdf,
   fileFilter: (req, file, cb) => {
     if (file.mimetype === 'application/pdf') return cb(null, true);
     cb(new Error('Only PDF files are allowed'));
   },
   limits: { fileSize: 15 * 1024 * 1024 }
+});
+
+// Separate temp storage for image uploads
+const tmpDir = path.join(__dirname, 'public', 'uploads', 'tmp');
+try { fs.mkdirSync(tmpDir, { recursive: true }); } catch (e) {}
+const storageImg = multer.diskStorage({
+  destination: tmpDir,
+  filename: (req, file, cb) => {
+    const unique = Date.now() + '-' + Math.round(Math.random() * 1e9);
+    const safe = String(file.originalname || 'image').replace(/\s+/g, '_');
+    cb(null, unique + '-' + safe);
+  }
+});
+const uploadImg = multer({
+  storage: storageImg,
+  fileFilter: (req, file, cb) => {
+    if (file && typeof file.mimetype === 'string' && file.mimetype.startsWith('image/')) return cb(null, true);
+    cb(new Error('Only image files are allowed'));
+  },
+  limits: { fileSize: 8 * 1024 * 1024 }
+});
+
+// Configure Cloudinary (values taken from .env)
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET
 });
 
 // Helper: Send email via SendGrid HTTP API (avoids SMTP connectivity issues on PaaS)
@@ -134,6 +162,8 @@ const governmentModel = require('./models/government');
 const researcherModel = require('./models/researcher');
 const ngoModel = require('./models/ngo');
 const researchPostModel = require('./models/researchPost');
+const heavySampleModel = require('./models/heavySample');
+const policyModel = require('./models/policy');
 
 // Mock data for demonstration
 const mockData = {
@@ -241,46 +271,96 @@ app.get('/dashboard', requireLogin, async (req, res) => {
   try {
     const language = req.query.lang || 'en';
 
-    
-    // Compute total cases from Disease_Data
+    // Compute total cases from Disease_Data with numeric conversion (handles strings)
     const agg = await dataModel.aggregate([
       {
         $group: {
           _id: null,
-          totalCases: { $sum: { $ifNull: ["$Cases", 0] } }
+          totalCases: {
+            $sum: {
+              $convert: { input: '$Cases', to: 'double', onError: 0, onNull: 0 }
+            }
+          }
         }
       }
     ]);
-    const totalCases = (agg && agg[0] && agg[0].totalCases) ? agg[0].totalCases : 0;
-    
-    const stats = { ...mockData.stats, totalCases };
-    // If general public user, render public dashboard
-    if (req.session.user && req.session.user.role === 'general') {
+    const totalCases = (agg && agg[0] && typeof agg[0].totalCases === 'number') ? agg[0].totalCases : 0;
+
+    const role = req.session.user && req.session.user.role;
+
+    if (role === 'general') {
+      const [totalPosts, activeUsers] = await Promise.all([
+        postModel.countDocuments({}),
+        generalModel.countDocuments({})
+      ]);
+      const stats = { totalCases, totalPosts, activeUsers };
       return res.render('publicDashboard', {
-        title: 'Dashboard',
+        title: 'Public Map',
         language,
         activeTab: 'dashboard',
-        alerts: mockData.alerts,
+        alerts: [],
         stats
       });
     }
 
-    res.render('dashboard', {
-      title: 'Dashboard',
+    if (role === 'master') {
+      const [totalPosts, assignedCount, unassignedCount] = await Promise.all([
+        postModel.countDocuments({}),
+        postModel.countDocuments({ assignedOfficerId: { $ne: null } }),
+        postModel.countDocuments({ $or: [ { assignedOfficerId: null }, { assignedOfficerId: { $exists: false } } ] })
+      ]);
+      const stats = { totalCases, totalPosts, assignedCount, unassignedCount };
+      return res.render('dashboard', {
+        title: 'Admin Map',
+        language,
+        stats,
+        alerts: [],
+        activeTab: 'dashboard'
+      });
+    }
+
+    if (role === 'official') {
+      const me = String(req.session.user && req.session.user.employeeId || '');
+      const assignedToMe = await postModel.countDocuments({ assignedOfficerId: me });
+      const stats = { totalCases, assignedToMe };
+      return res.render('dashboard', {
+        title: 'Admin Map',
+        language,
+        stats,
+        alerts: [],
+        activeTab: 'dashboard'
+      });
+    }
+
+    // Default fallback for other roles (researcher/government/ngo)
+    const stats = { totalCases };
+    return res.render('dashboard', {
+      title: 'Admin Map',
       language,
       stats,
-      alerts: mockData.alerts,
+      alerts: [],
       activeTab: 'dashboard'
     });
   } catch (err) {
     console.error('Dashboard error:', err);
-    // Fallback to mockData if DB fails
     const language = req.query.lang || 'en';
-    res.render('dashboard', {
+    // Provide safe fallback stats
+    const stats = { totalCases: 0, totalPosts: 0, activeUsers: 0, assignedCount: 0, unassignedCount: 0, assignedToMe: 0 };
+    // Render according to role context, defaulting to admin view
+    if (req.session.user && req.session.user.role === 'general') {
+      return res.render('publicDashboard', {
+        title: 'Public Map',
+        language,
+        activeTab: 'dashboard',
+        alerts: [],
+        stats
+      });
+    }
+    return res.render('dashboard', {
       title: 'Dashboard',
       language,
-      stats: mockData.stats,
-      alerts: mockData.alerts,
+      stats,
+      alerts: [],
       activeTab: 'dashboard'
     });
   }
@@ -295,33 +375,62 @@ app.get('/report', requireLogin, requireRole(['general']), (req, res) => {
   });
 });
 
-app.post('/report', requireLogin, requireRole(['general']), async (req, res) => {
+app.post('/report', requireLogin, requireRole(['general']), uploadImg.single('image'), async (req, res) => {
   const language = req.query.lang || 'en';
-  // Process the report data here
-  // console.log(req.body);
-  const { title, region, body, symptoms, type, waterSource, affectedCount, latitude, longitude } = req.body
+  try {
+    const { title, region, body, symptoms, type, waterSource, affectedCount, latitude, longitude } = req.body;
 
-  const post = new postModel({
-    title: title,
-    region: region,
-    body: body,
-    symptoms: symptoms,
-    type: type,
-    waterSource: waterSource,
-    affectedCount: affectedCount,
-    latitude: latitude ? Number(latitude) : undefined,
-    longitude: longitude ? Number(longitude) : undefined
-  })
+    let imageUrl = undefined;
+    const file = req.file;
+    if (file && file.path) {
+      try {
+        const result = await cloudinary.uploader.upload(file.path, {
+          folder: 'metalsense/community-posts',
+          resource_type: 'image',
+          use_filename: true,
+          unique_filename: true,
+          overwrite: false
+        });
+        imageUrl = result && result.secure_url ? result.secure_url : result.url;
+      } catch (e) {
+        console.error('Cloudinary upload failed:', e);
+      } finally {
+        try { fs.unlinkSync(file.path); } catch (_) {}
+      }
+    }
 
-  await post.save()
+    const post = new postModel({
+      title: title,
+      region: region,
+      body: body,
+      symptoms: symptoms,
+      type: type,
+      waterSource: waterSource,
+      affectedCount: affectedCount,
+      imageUrl: imageUrl || undefined,
+      latitude: latitude ? Number(latitude) : undefined,
+      longitude: longitude ? Number(longitude) : undefined
+    });
 
-  res.render('report', {
-    title: 'Community Report',
-    language,
-    activeTab: 'report',
-    success: true,
-    message: 'Report submitted successfully! Health officials have been notified.'
-  });
+    await post.save();
+
+    return res.render('report', {
+      title: 'Community Report',
+      language,
+      activeTab: 'report',
+      success: true,
+      message: 'Report submitted successfully! Health officials have been notified.'
+    });
+  } catch (err) {
+    console.error('report post error', err);
+    return res.render('report', {
+      title: 'Community Report',
+      language,
+      activeTab: 'report',
+      success: false,
+      message: 'Failed to submit report. Please try again.'
+    });
+  }
 });
 
 app.get('/water-quality', requireLogin, requireRole(['official', 'master']), (req, res) => {
@@ -477,6 +586,150 @@ app.post('/api/translate', async (req, res) => {
 });
 
 // Disease data APIs
+
+// Heavy metal sampling map API
+// Returns points with coordinates and selected chemistry for public/admin map
+app.get('/api/heavy-samples', async (req, res) => {
+  try {
+    const year = req.query.year ? Number(req.query.year) : undefined;
+    const month = req.query.month ? Number(req.query.month) : undefined;
+
+    const filter = { latitude: { $ne: null }, longitude: { $ne: null } };
+    if (!Number.isNaN(year) && typeof year === 'number') filter.year = year;
+    if (!Number.isNaN(month) && typeof month === 'number') filter.month = month;
+
+    const fields = {
+      sample_id: 1,
+      location: 1,
+      latitude: 1,
+      longitude: 1,
+      year: 1,
+      month: 1,
+      pH: 1,
+      EC: 1,
+      As: 1, Cd: 1, Cr: 1, Cu: 1, Pb: 1, Zn: 1, Ni: 1,
+      Background_As: 1, Background_Cd: 1, Background_Cr: 1, Background_Cu: 1, Background_Pb: 1, Background_Zn: 1, Background_Ni: 1,
+      _id: 0,
+    };
+
+    const docs = await heavySampleModel.find(filter, fields).lean();
+
+    const points = (docs || []).map(d => ({
+      sample_id: d.sample_id,
+      location: d.location,
+      lat: typeof d.latitude === 'number' ? d.latitude : Number(d.latitude),
+      lon: typeof d.longitude === 'number' ? d.longitude : Number(d.longitude),
+      year: d.year,
+      month: d.month,
+      pH: d.pH,
+      EC: d.EC,
+      metals: {
+        As: d.As, Cd: d.Cd, Cr: d.Cr, Cu: d.Cu, Pb: d.Pb, Zn: d.Zn, Ni: d.Ni,
+      },
+      background: {
+        As: d.Background_As, Cd: d.Background_Cd, Cr: d.Background_Cr, Cu: d.Background_Cu, Pb: d.Background_Pb, Zn: d.Background_Zn, Ni: d.Background_Ni,
+      }
+    })).filter(p => typeof p.lat === 'number' && typeof p.lon === 'number' && !Number.isNaN(p.lat) && !Number.isNaN(p.lon));
+
+    res.json({ success: true, count: points.length, points });
+  } catch (e) {
+    console.error('heavy-samples api error:', e);
+    res.status(500).json({ success: false, points: [] });
+  }
+});
+// Admin (official) Update Data pages and APIs for Heavy Samples
+app.get('/update-data', requireLogin, requireRole(['official']), async (req, res) => {
+  const language = req.query.lang || 'en';
+  res.render('update-data', {
+    title: 'Update Data',
+    language,
+    activeTab: 'update-data'
+  });
+});
+
+function toNumberOrNull(v) {
+  const n = Number(v);
+  return (typeof n === 'number' && !Number.isNaN(n)) ? n : undefined;
+}
+
+app.get('/api/heavy-samples/search', requireLogin, requireRole(['official']), async (req, res) => {
+  try {
+    const { location, year, month, limit } = req.query;
+    const filter = {};
+    if (location) {
+      filter.location = { $regex: String(location), $options: 'i' };
+    }
+    if (year) filter.year = Number(year);
+    if (month) filter.month = Number(month);
+    const max = Math.min(200, Number(limit || 100));
+    const docs = await heavySampleModel.find(filter).sort({ updatedAt: -1 }).limit(max).lean();
+    res.json({ success: true, list: docs });
+  } catch (e) {
+    console.error('heavy-samples search error:', e);
+    res.status(500).json({ success: false, list: [] });
+  }
+});
+
+app.post('/api/heavy-samples', requireLogin, requireRole(['official']), async (req, res) => {
+  try {
+    const body = req.body || {};
+    const doc = new heavySampleModel({
+      sample_id: toNumberOrNull(body.sample_id),
+      location: body.location || undefined,
+      latitude: toNumberOrNull(body.latitude),
+      longitude: toNumberOrNull(body.longitude),
+      year: toNumberOrNull(body.year),
+      month: toNumberOrNull(body.month),
+      pH: toNumberOrNull(body.pH),
+      EC: toNumberOrNull(body.EC),
+      As: toNumberOrNull(body.As),
+      Cd: toNumberOrNull(body.Cd),
+      Cr: toNumberOrNull(body.Cr),
+      Cu: toNumberOrNull(body.Cu),
+      Pb: toNumberOrNull(body.Pb),
+      Zn: toNumberOrNull(body.Zn),
+      Ni: toNumberOrNull(body.Ni),
+      Background_As: toNumberOrNull(body.Background_As),
+      Background_Cd: toNumberOrNull(body.Background_Cd),
+      Background_Cr: toNumberOrNull(body.Background_Cr),
+      Background_Cu: toNumberOrNull(body.Background_Cu),
+      Background_Pb: toNumberOrNull(body.Background_Pb),
+      Background_Zn: toNumberOrNull(body.Background_Zn),
+      Background_Ni: toNumberOrNull(body.Background_Ni),
+    });
+    await doc.save();
+    res.json({ success: true, doc });
+  } catch (e) {
+    console.error('heavy-samples create error:', e);
+    res.status(500).json({ success: false, message: 'create_failed' });
+  }
+});
+
+app.put('/api/heavy-samples/:id', requireLogin, requireRole(['official']), async (req, res) => {
+  try {
+    const id = req.params.id;
+    const body = req.body || {};
+    const set = {};
+    const assign = (k, v) => { if (typeof v !== 'undefined') set[k] = v; };
+    assign('sample_id', toNumberOrNull(body.sample_id));
+    assign('location', body.location || undefined);
+    assign('latitude', toNumberOrNull(body.latitude));
+    assign('longitude', toNumberOrNull(body.longitude));
+    assign('year', toNumberOrNull(body.year));
+    assign('month', toNumberOrNull(body.month));
+    assign('pH', toNumberOrNull(body.pH));
+    assign('EC', toNumberOrNull(body.EC));
+    ['As','Cd','Cr','Cu','Pb','Zn','Ni'].forEach(k => assign(k, toNumberOrNull(body[k])));
+    ['Background_As','Background_Cd','Background_Cr','Background_Cu','Background_Pb','Background_Zn','Background_Ni'].forEach(k => assign(k, toNumberOrNull(body[k])));
+    const updated = await heavySampleModel.findByIdAndUpdate(id, { $set: set }, { new: true });
+    if (!updated) return res.status(404).json({ success: false, message: 'not_found' });
+    res.json({ success: true, doc: updated });
+  } catch (e) {
+    console.error('heavy-samples update error:', e);
+    res.status(500).json({ success: false, message: 'update_failed' });
+  }
+});
+
 app.get('/api/disease/months', async (req, res) => {
   try {
     const months = await dataModel.distinct('mon');
@@ -1400,11 +1653,13 @@ app.get('/data-plotting', requireLogin, requireRole(['government']), async (req,
     if (totalCases > 200000) riskLevel = 'High';
     else if (totalCases > 50000) riskLevel = 'Medium';
 
+    const totalPolicies = await policyModel.countDocuments({});
+
     res.render('data-plotting', {
       title: 'Data Plotting',
       language,
       activeTab: 'data-plotting',
-      stats: { totalCases, riskLevel }
+      stats: { totalCases, riskLevel, totalPolicies }
     });
   } catch (err) {
     console.error('data-plotting error:', err);
@@ -1413,7 +1668,7 @@ app.get('/data-plotting', requireLogin, requireRole(['government']), async (req,
       title: 'Data Plotting',
       language,
       activeTab: 'data-plotting',
-      stats: { totalCases: 0, riskLevel: 'Low' }
+      stats: { totalCases: 0, riskLevel: 'Low', totalPolicies: 0 }
     });
   }
 });
@@ -1433,6 +1688,110 @@ app.get('/research-posts', requireLogin, requireRole(['government']), async (req
   } catch (e) {
     console.error('research-posts error', e);
     res.render('research-posts', { title: 'Research Posts', language: req.query.lang || 'en', activeTab: 'research-posts', posts: [] });
+  }
+});
+
+// Government Body: Policies management (list + create)
+app.get('/policies', requireLogin, requireRole(['government']), async (req, res) => {
+  try {
+    const language = req.query.lang || 'en';
+    const policies = await policyModel.find({}).sort({ createdAt: -1 }).lean();
+    res.render('policies', {
+      title: 'Policies',
+      language,
+      activeTab: 'policies',
+      policies,
+      created: req.query.created === '1',
+      error: null
+    });
+  } catch (e) {
+    console.error('policies list error', e);
+    res.status(500).render('policies', {
+      title: 'Policies',
+      language: req.query.lang || 'en',
+      activeTab: 'policies',
+      policies: [],
+      created: false,
+      error: 'Failed to load policies.'
+    });
+  }
+});
+
+app.post('/policies', requireLogin, requireRole(['government']), async (req, res) => {
+  try {
+    const { title, description } = req.body || {};
+    if (!title || !description) {
+      const language = req.query.lang || 'en';
+      const policies = await policyModel.find({}).sort({ createdAt: -1 }).lean();
+      return res.status(400).render('policies', {
+        title: 'Policies',
+        language,
+        activeTab: 'policies',
+        policies,
+        created: false,
+        error: 'Title and Description are required.'
+      });
+    }
+
+    const createdBy = (req.session.user && (req.session.user.employeeId || req.session.user.email)) || null;
+    const doc = new policyModel({ title: String(title).trim(), description: String(description).trim(), createdBy });
+    await doc.save();
+    return res.redirect('/policies?created=1');
+  } catch (e) {
+    console.error('policies create error', e);
+    const language = req.query.lang || 'en';
+    try {
+      const policies = await policyModel.find({}).sort({ createdAt: -1 }).lean();
+      return res.status(500).render('policies', {
+        title: 'Policies',
+        language,
+        activeTab: 'policies',
+        policies,
+        created: false,
+        error: 'Failed to create policy.'
+      });
+    } catch(_) {
+      return res.status(500).send('Failed to create policy');
+    }
+  }
+});
+
+// NGO: Dashboard (sampling map)
+app.get('/ngo/dashboard', requireLogin, requireRole(['ngo']), async (req, res) => {
+  try {
+    const language = req.query.lang || 'en';
+    const agg = await dataModel.aggregate([
+      { $group: { _id: null, totalCases: { $sum: { $ifNull: ['$Cases', 0] } } } }
+    ]);
+    const totalCases = (agg && agg[0] && agg[0].totalCases) ? agg[0].totalCases : 0;
+
+    return res.render('ngodashboard', {
+      title: 'NGO Dashboard',
+      language,
+      activeTab: 'ngo-dashboard',
+      stats: { totalCases }
+    });
+  } catch (e) {
+    console.error('ngo dashboard error', e);
+    const language = req.query.lang || 'en';
+    return res.render('ngodashboard', {
+      title: 'NGO Dashboard',
+      language,
+      activeTab: 'ngo-dashboard',
+      stats: { totalCases: 0 }
+    });
+  }
+});
+
+// NGO: View government policies (read-only)
+app.get('/ngo/policies', requireLogin, requireRole(['ngo']), async (req, res) => {
+  try {
+    const language = req.query.lang || 'en';
+    const policies = await policyModel.find({}).sort({ createdAt: -1 }).lean();
+    res.render('ngo-policies', { title: 'Policies', language, activeTab: 'ngo-policies', policies });
+  } catch (e) {
+    console.error('ngo policies error', e);
+    res.render('ngo-policies', { title: 'Policies', language: req.query.lang || 'en', activeTab: 'ngo-policies', policies: [] });
   }
 });
 
@@ -1542,6 +1901,11 @@ app.delete('/api/researchers/:id', requireLogin, requireRole(['government']), as
 app.get('/r/analysis', requireLogin, requireRole(['researcher']), async (req, res) => {
   const language = req.query.lang || 'en';
 
+  // Initial navigation shows a loader page and then re-requests with ready=1
+  if (!req.xhr && req.headers.accept && req.headers.accept.includes('text/html') && !req.query.ready) {
+    return res.render('analysis-loader', { layout: false });
+  }
+
   async function fetchAnalysisFromFlask(query) {
     const base = (process.env.FLASK_URL || FLASK_URL || 'http://127.0.0.1:5000').replace(/\/+$/, '');
     const url = base + '/api/analyze' + (query ? ('?' + query) : '');
@@ -1633,11 +1997,14 @@ app.get('/r/analysis', requireLogin, requireRole(['researcher']), async (req, re
     // Optional: limit results or min_risk filter
     // qs.push('limit=5000');
 
-    let payload = await fetchAnalysisFromFlask(qs.join('&'));
+    let initialQuery = qs.join('&');
+    let payload = await fetchAnalysisFromFlask(initialQuery);
+    let usedQuery = initialQuery;
 
-    // Fallback: if no data for area filters, fetch global analysis
+    // Fallback: if no data for area filters, fetch global analysis and update usedQuery
     if (!payload || !payload.success || !Array.isArray(payload.data) || payload.data.length === 0) {
       payload = await fetchAnalysisFromFlask('');
+      usedQuery = '';
     }
 
     const hasMap = payload && payload.mapPath;
@@ -1646,13 +2013,19 @@ app.get('/r/analysis', requireLogin, requireRole(['researcher']), async (req, re
       // Use local proxy to avoid cross-origin iframe/X-Frame-Options issues
       payload.mapPath = '/proxy/flask-map';
     }
+
+    // Build proxied plot URLs for embedding on same origin (match the query actually used)
+    const baseFlask = (process.env.FLASK_URL || FLASK_URL || '').replace(/\/+$/, '');
+    const proxiedPlot = '/proxy/flask-plot' + (usedQuery ? ('?' + usedQuery) : '');
+
     return res.render('researcher-page', {
       title: 'Real-time Analysis',
       language,
       activeTab: 'r-analysis',
       section: 'analysis',
       analysis: payload || {},
-      flaskBase: viewFlaskBase
+      flaskBase: viewFlaskBase,
+      plotUrl: proxiedPlot
     });
   } catch (e) {
     console.error('/r/analysis error:', e);
@@ -1662,8 +2035,76 @@ app.get('/r/analysis', requireLogin, requireRole(['researcher']), async (req, re
       activeTab: 'r-analysis',
       section: 'analysis',
       analysis: { success: false, data: [], charts: {}, statistics: {}, mapPath: null },
-      flaskBase: (process.env.FLASK_URL || FLASK_URL || '').replace(/\/+$/, '')
+      flaskBase: (process.env.FLASK_URL || FLASK_URL || '').replace(/\/+$/, ''),
+      plotUrl: '/proxy/flask-plot'
     });
+  }
+});
+
+// Proxy the Flask-generated plot image (PNG)
+app.get('/proxy/flask-plot', async (req, res) => {
+  try {
+    const base = (process.env.FLASK_URL || FLASK_URL || 'http://127.0.0.1:5000').replace(/\/+$/, '');
+    // Forward query string to preserve filters (state, district, etc.)
+    const qs = req.originalUrl.split('?')[1] || '';
+    const primaryUrl = base + '/api/plot' + (qs ? ('?' + qs) : '');
+    const fallbackUrl = base + '/api/plot';
+
+    let responded = false;
+    function sendPng(buf) {
+      if (responded) return;
+      responded = true;
+      res.status(200);
+      res.setHeader('Content-Type', 'image/png');
+      res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
+      res.end(buf);
+    }
+    function sendError(status, message) {
+      if (responded) return;
+      responded = true;
+      try { res.setHeader('Content-Type', 'text/plain; charset=utf-8'); } catch(_) {}
+      res.status(status).send(message);
+    }
+
+    function fetchPlot(url, cb) {
+      const lib = url.startsWith('https') ? https : http;
+      const options = {
+        timeout: 20000,
+        headers: {
+          'Accept': 'image/png',
+          'Connection': 'keep-alive',
+          'User-Agent': 'AquaFlow-Node-Client/1.0'
+        }
+      };
+      const reqFlask = lib.get(url, options, (resp) => {
+        const chunks = [];
+        resp.on('data', (chunk) => chunks.push(Buffer.from(chunk)));
+        resp.on('end', () => {
+          const buf = Buffer.concat(chunks);
+          const ct = String((resp.headers && (resp.headers['content-type'] || resp.headers['Content-Type'])) || '').toLowerCase();
+          cb(null, resp.statusCode || 200, ct, buf);
+        });
+      });
+      reqFlask.on('error', (err) => cb(err));
+      reqFlask.setTimeout(20000, () => { try { reqFlask.destroy(); } catch(_) {}; cb(new Error('timeout')); });
+    }
+
+    fetchPlot(primaryUrl, (err, code, ct, buf) => {
+      const okPng = !err && code === 200 && ct.includes('image/png') && buf && buf.length > 0;
+      if (okPng) return sendPng(buf);
+      // On failure or non-PNG, try without filters as a safe fallback
+      fetchPlot(fallbackUrl, (err2, code2, ct2, buf2) => {
+        const okPng2 = !err2 && code2 === 200 && ct2.includes('image/png') && buf2 && buf2.length > 0;
+        if (okPng2) return sendPng(buf2);
+        console.error('proxy plot unavailable');
+        return sendError(502, 'Plot unavailable');
+      });
+    });
+  } catch (e) {
+    console.error('proxy plot fatal:', e);
+    if (!res.headersSent) {
+      res.status(500).send('Plot error');
+    }
   }
 });
 
@@ -1671,52 +2112,53 @@ app.get('/r/analysis', requireLogin, requireRole(['researcher']), async (req, re
 app.get('/proxy/flask-map', async (req, res) => {
   try {
     const base = (process.env.FLASK_URL || FLASK_URL || 'http://127.0.0.1:5000').replace(/\/+$/, '');
-    const url = base + '/static/india_metal_pollution_map.html';
-    const lib = url.startsWith('https') ? https : http;
 
-    const options = {
-      timeout: 20000,
-      headers: {
-        'Accept': 'text/html,application/xhtml+xml',
-        'Connection': 'keep-alive',
-        'User-Agent': 'AquaFlow-Node-Client/1.0'
-      }
-    };
-
-    let data = '';
-    const reqFlask = lib.get(url, options, (resp) => {
-      resp.on('data', (c) => { data += c.toString(); });
-      resp.on('end', () => {
-        // Re-write HTML to ensure static assets load from Flask origin inside iframe
-        let html = data || '';
-        try {
-          // Inject base href if missing to resolve relative URLs
-          if (!/\<base\s+href=/i.test(html)) {
-            html = html.replace(/<head[^>]*>/i, (m) => m + `<base href="${base}/">`);
-          }
-          // Rewrite any absolute /static/ references to point to Flask base
-          html = html.replace(/(src|href)="\/?static\//gi, `$1="${base}/static/`);
-          // Remove meta-based frame restrictions that might be in the document
-          html = html.replace(/<meta[^>]+http-equiv=["']?X-Frame-Options["']?[^>]*>/gi, '');
-          html = html.replace(/<meta[^>]+http-equiv=["']?Content-Security-Policy["']?[^>]*>/gi, '');
-        } catch (_) {}
-
-        res.setHeader('Content-Type', 'text/html; charset=utf-8');
-        // Ensure we don't send restrictive headers on the proxy response
-        try { res.removeHeader('X-Frame-Options'); } catch(e) {}
-        try { res.removeHeader('Content-Security-Policy'); } catch(e) {}
-        res.status(resp.statusCode || 200).send(html);
+    function fetchUrl(url, accept, cb) {
+      const lib = url.startsWith('https') ? https : http;
+      const options = {
+        timeout: 25000,
+        headers: {
+          'Accept': accept,
+          'Connection': 'keep-alive',
+          'User-Agent': 'AquaFlow-Node-Client/1.0'
+        }
+      };
+      const reqFlask = lib.get(url, options, (resp) => {
+        let data = '';
+        resp.on('data', (c) => { data += c.toString(); });
+        resp.on('end', () => cb(null, resp.statusCode || 200, data));
       });
-    });
+      reqFlask.on('error', (err) => cb(err));
+      reqFlask.setTimeout(25000, () => { try { reqFlask.destroy(); } catch(_) {}; cb(new Error('timeout')); });
+    }
 
-    reqFlask.on('error', (err) => {
-      console.error('proxy map error:', err);
-      res.status(502).send('Map unavailable');
-    });
+    function sendHtml(html, statusCode) {
+      let out = html || '';
+      try {
+        // Clean potential restrictive meta tags if present
+        out = out.replace(/<meta[^>]+http-equiv=["']?X-Frame-Options["']?[^>]*>/gi, '');
+        out = out.replace(/<meta[^>]+http-equiv=["']?Content-Security-Policy["']?[^>]*>/gi, '');
+      } catch (_) {}
+      res.setHeader('Content-Type', 'text/html; charset=utf-8');
+      try { res.removeHeader('X-Frame-Options'); } catch(e) {}
+      try { res.removeHeader('Content-Security-Policy'); } catch(e) {}
+      res.status(statusCode || 200).send(out);
+    }
 
-    reqFlask.setTimeout(20000, () => {
-      try { reqFlask.destroy(); } catch(_) {}
-      res.status(504).send('Map timeout');
+    // Try to fetch latest cached map from Flask API
+    fetchUrl(base + '/api/map', 'text/html,application/xhtml+xml', (err, code, html) => {
+      if (!err && code === 200 && html) {
+        return sendHtml(html, 200);
+      }
+      // If not available, trigger analysis to generate and retry
+      fetchUrl(base + '/api/analyze', 'application/json', (_e2) => {
+        // After triggering, attempt map fetch again regardless of analyze response
+        fetchUrl(base + '/api/map', 'text/html,application/xhtml+xml', (e3, code2, html2) => {
+          if (!e3 && code2 === 200 && html2) return sendHtml(html2, 200);
+          console.error('proxy map unavailable after analyze');
+          res.status(502).send('Map unavailable');
+        });
+      });
     });
   } catch (e) {
     console.error('proxy map fatal:', e);
@@ -1765,7 +2207,7 @@ app.get('/r/posts', requireLogin, requireRole(['researcher']), async (req, res) 
   }
 });
 
-app.post('/r/posts', requireLogin, requireRole(['researcher']), upload.single('pdf'), async (req, res) => {
+app.post('/r/posts', requireLogin, requireRole(['researcher']), uploadPdf.single('pdf'), async (req, res) => {
   try {
     const file = req.file;
     if (!file) return res.status(400).send('PDF file required');
@@ -1797,6 +2239,10 @@ app.get('/r/communications', requireLogin, requireRole(['researcher']), async (r
       _id: t._id,
       title: escapeHtml(t.title||''),
       body: escapeHtml(t.body||''),
+      authorId: escapeHtml(t.authorId || ''),
+      state: escapeHtml(t.state || ''),
+      district: escapeHtml(t.district || ''),
+      authorName: escapeHtml(t.authorName || t.authorRole || 'researcher'),
       comments: (t.comments||[]).map(c => ({ authorName: c.authorName || c.authorRole || 'user', text: escapeHtml(c.text||'') }))
     }));
     res.render('researcher-page', { title: 'Communications', language, activeTab: 'r-comms', section: 'comms', threads: safeThreads });
