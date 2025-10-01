@@ -1,0 +1,275 @@
+<div class="page-header">
+  <h2 class="page-title"><%= title || 'Researcher' %></h2>
+</div>
+
+<% if (section === 'analysis') { %>
+  <section class="card" style="padding:1rem;">
+    <h3 style="margin-top:0;">Real-time Heavy Metal Analysis</h3>
+
+    <% if (analysis && analysis.mapPath && flaskBase) { %>
+      <div style="width:100%;height:520px;border:1px solid #e5e7eb;border-radius:8px;overflow:hidden;margin:0.5rem 0;">
+        <iframe src="<%= flaskBase + analysis.mapPath %>" style="width:100%;height:100%;border:0;" loading="lazy"></iframe>
+      </div>
+    <% } else { %>
+      <p>No map available. Ensure the Python backend is running and FLASK_URL is configured.</p>
+    <% } %>
+
+    <% const stats = (analysis && analysis.statistics) ? analysis.statistics : null; %>
+    <% if (stats) { %>
+    <div class="stats-grid" style="margin-top:1rem;">
+      <div class="stat-card blue"><div class="stat-content"><div class="stat-info"><p class="stat-label">Total Samples</p><p class="stat-value"><%= stats.total_samples || 0 %></p></div><div class="stat-icon"><i class="fas fa-database"></i></div></div></div>
+      <div class="stat-card red"><div class="stat-content"><div class="stat-info"><p class="stat-label">Severe Sites</p><p class="stat-value"><%= stats.severe_pollution_sites || 0 %></p></div><div class="stat-icon"><i class="fas fa-triangle-exclamation"></i></div></div></div>
+      <div class="stat-card yellow"><div class="stat-content"><div class="stat-info"><p class="stat-label">Moderate Sites</p><p class="stat-value"><%= stats.moderate_pollution_sites || 0 %></p></div><div class="stat-icon"><i class="fas fa-exclamation-circle"></i></div></div></div>
+      <div class="stat-card green"><div class="stat-content"><div class="stat-info"><p class="stat-label">Low Sites</p><p class="stat-value"><%= stats.low_pollution_sites || 0 %></p></div><div class="stat-icon"><i class="fas fa-circle-check"></i></div></div></div>
+    </div>
+    <% } %>
+
+    <div style="display:grid;grid-template-columns:1fr;gap:1rem;margin-top:1rem;">
+      <div class="card" style="padding:0.5rem;">
+        <h4 style="margin:0.5rem 0;">Index Distribution</h4>
+        <canvas id="chartIndexDist" height="120"></canvas>
+      </div>
+      <div class="card" style="padding:0.5rem;">
+        <h4 style="margin:0.5rem 0;">State-wise Avg PLI</h4>
+        <canvas id="chartStateAvgPli" height="120"></canvas>
+      </div>
+      <div class="card" style="padding:0.5rem;">
+        <h4 style="margin:0.5rem 0;">Metal-wise Avg CF</h4>
+        <canvas id="chartMetalCF" height="120"></canvas>
+      </div>
+      <div class="card" style="padding:0.5rem;">
+        <h4 style="margin:0.5rem 0;">Risk Time Series</h4>
+        <canvas id="chartTimeSeries" height="120"></canvas>
+      </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <script>
+      (function(){
+        try {
+          const payload = <%- JSON.stringify(analysis || {}) %>;
+          if (!payload || !payload.charts) return;
+          const charts = payload.charts || {};
+
+          // Index distribution - use mean/min/max for PLI/NPI/HEI
+          const dist = charts.index_distribution || {};
+          const labelsIndex = ['PLI','NPI','HEI'];
+          const means = [
+            (dist.pli && dist.pli.mean) || 0,
+            (dist.npi && dist.npi.mean) || 0,
+            (dist.hei && dist.hei.mean) || 0
+          ];
+          const mins = [
+            (dist.pli && dist.pli.min) || 0,
+            (dist.npi && dist.npi.min) || 0,
+            (dist.hei && dist.hei.min) || 0
+          ];
+          const maxs = [
+            (dist.pli && dist.pli.max) || 0,
+            (dist.npi && dist.npi.max) || 0,
+            (dist.hei && dist.hei.max) || 0
+          ];
+          const ctxDist = document.getElementById('chartIndexDist');
+          if (ctxDist) {
+            new Chart(ctxDist, {
+              type: 'bar',
+              data: {
+                labels: labelsIndex,
+                datasets: [
+                  { label: 'Mean', data: means, backgroundColor: '#60a5fa' },
+                  { label: 'Min', data: mins, backgroundColor: '#93c5fd' },
+                  { label: 'Max', data: maxs, backgroundColor: '#1d4ed8' }
+                ]
+              },
+              options: { responsive: true, plugins: { legend: { position: 'top' } } }
+            });
+          }
+
+          // State-wise Avg PLI (top 10 by total_samples)
+          const stateStats = charts.state_wise_stats || {};
+          const stateEntries = Object.entries(stateStats).map(([state, obj]) => ({
+            state: state || '-',
+            avg_pli: (obj && obj.avg_pli) || 0,
+            total: (obj && obj.total_samples) || 0
+          }));
+          stateEntries.sort((a,b)=> b.total - a.total);
+          const topStates = stateEntries.slice(0, 10);
+          const ctxState = document.getElementById('chartStateAvgPli');
+          if (ctxState && topStates.length) {
+            new Chart(ctxState, {
+              type: 'bar',
+              data: {
+                labels: topStates.map(x => x.state),
+                datasets: [ { label: 'Avg PLI', data: topStates.map(x => x.avg_pli), backgroundColor: '#10b981' } ]
+              },
+              options: { responsive: true, plugins: { legend: { display: false } } }
+            });
+          }
+
+          // Metal-wise Avg CF
+          const metalStats = charts.metal_contamination || {};
+          const metalKeys = Object.keys(metalStats);
+          const ctxMetal = document.getElementById('chartMetalCF');
+          if (ctxMetal && metalKeys.length) {
+            new Chart(ctxMetal, {
+              type: 'bar',
+              data: {
+                labels: metalKeys,
+                datasets: [ { label: 'Avg CF', data: metalKeys.map(k => (metalStats[k] && metalStats[k].avg_cf) || 0), backgroundColor: '#f59e0b' } ]
+              },
+              options: { responsive: true, plugins: { legend: { display: false } } }
+            });
+          }
+
+          // Time series severe/moderate/low
+          const ts = charts.time_series || {};
+          const tsKeys = Object.keys(ts).sort();
+          const ctxTs = document.getElementById('chartTimeSeries');
+          if (ctxTs && tsKeys.length) {
+            new Chart(ctxTs, {
+              type: 'line',
+              data: {
+                labels: tsKeys,
+                datasets: [
+                  { label: 'Severe', data: tsKeys.map(k => (ts[k] && ts[k].severe) || 0), borderColor: '#ef4444', backgroundColor: 'rgba(239,68,68,0.2)', fill: true },
+                  { label: 'Moderate', data: tsKeys.map(k => (ts[k] && ts[k].moderate) || 0), borderColor: '#f59e0b', backgroundColor: 'rgba(245,158,11,0.2)', fill: true },
+                  { label: 'Low', data: tsKeys.map(k => (ts[k] && ts[k].low) || 0), borderColor: '#10b981', backgroundColor: 'rgba(16,185,129,0.2)', fill: true }
+                ]
+              },
+              options: { responsive: true, plugins: { legend: { position: 'top' } }, scales: { y: { beginAtZero: true } } }
+            });
+          }
+        } catch (e) { console.error('analysis render error', e); }
+      })();
+    </script>
+  </section>
+<% } %>
+
+<% if (section === 'posts') { %>
+  <section class="card" style="padding:1rem;margin-bottom:1rem;">
+    <h3 style="margin-top:0;">Make Post</h3>
+    <form method="post" action="/r/posts" enctype="multipart/form-data" class="form-grid">
+      <div class="form-row">
+        <label>Title</label>
+        <input type="text" name="title" required />
+      </div>
+      <div class="form-row">
+        <label>PDF File</label>
+        <input type="file" name="pdf" accept="application/pdf" required />
+      </div>
+      <div class="form-actions">
+        <button class="btn" type="submit">Make Post</button>
+      </div>
+    </form>
+  </section>
+
+  <section class="card" style="padding:1rem;">
+    <h3 style="margin-top:0;">All Research Posts</h3>
+    <div class="table-responsive">
+      <table class="table" style="width:100%;border-collapse:collapse;">
+        <thead>
+          <tr>
+            <th style="text-align:left;padding:0.5rem;border-bottom:1px solid #e5e7eb;">Title</th>
+            <th style="text-align:left;padding:0.5rem;border-bottom:1px solid #e5e7eb;">Posted</th>
+            <th style="text-align:left;padding:0.5rem;border-bottom:1px solid #e5e7eb;">Link</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% (posts || []).forEach(function(p){ %>
+            <tr>
+              <td style="padding:0.5rem;border-bottom:1px solid #f3f4f6;"><%= p.title || 'Untitled' %></td>
+              <td style="padding:0.5rem;border-bottom:1px solid #f3f4f6;"><%= new Date(p.createdAt).toLocaleString() %></td>
+              <td style="padding:0.5rem;border-bottom:1px solid #f3f4f6;">
+                <% if (p.content && p.content.startsWith('/')) { %>
+                  <a class="btn btn-small" href="<%= p.content %>" target="_blank" rel="noopener">Open PDF</a>
+                <% } else { %>
+                  <span>-</span>
+                <% } %>
+              </td>
+            </tr>
+          <% }) %>
+          <% if (!posts || !posts.length) { %>
+            <tr><td colspan="3" style="padding:0.5rem;">No posts yet.</td></tr>
+          <% } %>
+        </tbody>
+      </table>
+    </div>
+  </section>
+<% } %>
+
+<% if (section === 'comms') { %>
+  <section class="card" style="padding:1rem;margin-bottom:1rem;">
+    <h3 style="margin-top:0;">Create Thread</h3>
+    <form id="threadForm" method="post" action="/r/communications" class="form-grid">
+      <div class="form-row">
+        <label>Title</label>
+        <input type="text" name="title" required />
+      </div>
+      <div class="form-row">
+        <label>Body</label>
+        <textarea name="body" required style="min-height:100px;"></textarea>
+      </div>
+      <div class="form-actions"><button class="btn" type="submit">Create Thread</button></div>
+    </form>
+  </section>
+
+  <section class="card" style="padding:1rem;">
+    <h3 style="margin-top:0;">Threads</h3>
+    <% if (!threads || !threads.length) { %>
+      <p>No threads yet.</p>
+    <% } %>
+    <% (threads || []).forEach(function(t){ %>
+      <article class="card" style="padding:0.75rem;margin:0.5rem 0;">
+        <h4 style="margin:0 0 0.25rem 0;"><%= t.title %></h4>
+        <p><%= t.body %></p>
+        <details>
+          <summary>Comments (<%= (t.comments||[]).length %>)</summary>
+          <ul style="padding-left:1rem;">
+            <% (t.comments || []).forEach(function(c){ %>
+              <li style="margin:0.25rem 0;"><b><%= c.authorName || c.authorRole || 'user' %>:</b> <%= c.text %></li>
+            <% }) %>
+          </ul>
+        </details>
+        <form method="post" action="/r/communications/<%= t._id %>/comment" style="margin-top:0.5rem;display:flex;gap:0.5rem;">
+          <input type="text" name="text" placeholder="Add a comment" required style="padding:0.35rem;border:1px solid #d1d5db;border-radius:6px;flex:1;"/>
+          <button type="submit" class="btn">Comment</button>
+        </form>
+      </article>
+    <% }) %>
+  </section>
+<% } %>
+
+<% if (section === 'dashboard') { %>
+  <div class="stats-grid">
+    <div class="stat-card blue">
+      <div class="stat-content">
+        <div class="stat-info">
+          <p class="stat-label">My Total Posts</p>
+          <p class="stat-value"><%= myTotal || 0 %></p>
+        </div>
+        <div class="stat-icon"><i class="fas fa-file-pdf"></i></div>
+      </div>
+    </div>
+    <div class="stat-card green">
+      <div class="stat-content">
+        <div class="stat-info">
+          <p class="stat-label">My Area</p>
+          <p class="stat-value"><%= (area && area.state ? area.state : '-') %> / <%= (area && area.district ? area.district : '-') %></p>
+        </div>
+        <div class="stat-icon"><i class="fas fa-location-dot"></i></div>
+      </div>
+    </div>
+  </div>
+
+  <section class="card" style="padding:1rem;margin-top:1rem;">
+    <h3 style="margin-top:0;">Posts in My Area</h3>
+    <ul>
+      <% (areaPosts || []).forEach(function(p){ %>
+        <li>📄 <%= p.title || 'Untitled' %> <small style="color:#6b7280;">(<%= new Date(p.createdAt).toLocaleString() %>)</small></li>
+      <% }) %>
+      <% if (!areaPosts || !areaPosts.length) { %>
+        <li>No posts found in your area yet.</li>
+      <% } %>
+    </ul>
+  </section>
+<% } %>

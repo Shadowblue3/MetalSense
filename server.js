@@ -10,11 +10,33 @@ const https = require('https');
 const app = express();
 const PORT = process.env.PORT || 3000;
 const HOST = process.env.HOST || '0.0.0.0';
-const FLASK_URL = process.env.FLASK_URL || 'https://aquaflow-2-0-backend-1.onrender.com';
+const FLASK_URL = process.env.FLASK_URL || 'https://metalsense-backend.onrender.com';
 const mongoose = require('mongoose');
 const session = require('express-session');
 const bcrypt = require('bcrypt');
 const nodemailer = require('nodemailer');
+const fs = require('fs');
+const multer = require('multer');
+
+// Research uploads (PDF)
+const uploadDir = path.join(__dirname, 'public', 'uploads', 'research');
+try { fs.mkdirSync(uploadDir, { recursive: true }); } catch (e) {}
+const storage = multer.diskStorage({
+  destination: uploadDir,
+  filename: (req, file, cb) => {
+    const unique = Date.now() + '-' + Math.round(Math.random() * 1e9);
+    const name = String(file.originalname || 'file.pdf').replace(/\s+/g, '_');
+    cb(null, unique + '-' + name);
+  }
+});
+const upload = multer({
+  storage,
+  fileFilter: (req, file, cb) => {
+    if (file.mimetype === 'application/pdf') return cb(null, true);
+    cb(new Error('Only PDF files are allowed'));
+  },
+  limits: { fileSize: 15 * 1024 * 1024 }
+});
 
 // Helper: Send email via SendGrid HTTP API (avoids SMTP connectivity issues on PaaS)
 async function sendViaSendGrid({ from, to, subject, text, html, apiKey, timeoutMs = 15000 }) {
@@ -1291,7 +1313,7 @@ app.post('/login', async (req, res) => {
           const ok = await bcrypt.compare(password, user.password || '');
           if (!ok) return res.status(401).json({ success: false, message: 'Invalid credentials' });
           req.session.user = { role: 'researcher', email: user.email || null, researcherId: String(user._id), employeeId };
-          return res.json({ success: true, redirect: '/dashboard' });
+          return res.json({ success: true, redirect: '/r/dashboard' });
         } else if (prefix === 'GOV') {
           const user = await governmentModel.findOne({ id: employeeId });
           if (!user) return res.status(401).json({ success: false, message: 'Invalid credentials (government not found)' });
@@ -1514,6 +1536,330 @@ app.put('/api/researchers/:id', requireLogin, requireRole(['government']), async
 });
 app.delete('/api/researchers/:id', requireLogin, requireRole(['government']), async (req, res) => {
   try { const id = req.params.id; const del = await researcherModel.findByIdAndDelete(id); if (!del) return res.status(404).json({ success: false }); res.json({ success: true }); } catch (e) { res.status(500).json({ success: false }); }
+});
+
+// Researcher routes
+app.get('/r/analysis', requireLogin, requireRole(['researcher']), async (req, res) => {
+  const language = req.query.lang || 'en';
+
+  async function fetchAnalysisFromFlask(query) {
+    const base = (process.env.FLASK_URL || FLASK_URL || 'http://127.0.0.1:5000').replace(/\/+$/, '');
+    const url = base + '/api/analyze' + (query ? ('?' + query) : '');
+
+    return await new Promise((resolve) => {
+      try {
+        const lib = url.startsWith('https') ? https : http;
+        const options = {
+          timeout: 30000,
+          headers: {
+            'Accept': 'application/json',
+            'Connection': 'keep-alive',
+            'User-Agent': 'AquaFlow-Node-Client/1.0'
+          }
+        };
+
+        let timeoutId;
+        let aborted = false;
+
+        const reqFlask = lib.get(url, options, (resp) => {
+          if (timeoutId) clearTimeout(timeoutId);
+          let data = '';
+          resp.on('data', (c) => { data += c.toString(); });
+          resp.on('end', () => {
+            if (aborted) return;
+            try {
+              const json = JSON.parse(data);
+              resolve(json && typeof json === 'object' ? json : { success: false, data: [], charts: {}, statistics: {}, mapPath: null });
+            } catch (e) {
+              console.error('Flask analysis parse error:', e);
+              console.error('Raw response:', data);
+              resolve({ success: false, data: [], charts: {}, statistics: {}, mapPath: null });
+            }
+          });
+          resp.on('error', (err) => {
+            if (aborted) return;
+            console.error('Flask analysis response error:', err);
+            resolve({ success: false, data: [], charts: {}, statistics: {}, mapPath: null });
+          });
+          resp.on('close', () => {
+            if (aborted) return;
+            if (!data) {
+              console.error('Flask analysis connection closed without data');
+              resolve({ success: false, data: [], charts: {}, statistics: {}, mapPath: null });
+            }
+          });
+        });
+
+        timeoutId = setTimeout(() => {
+          aborted = true;
+          try { reqFlask.destroy(); } catch (_) {}
+          console.error('Flask analysis request timeout after 30 seconds');
+          resolve({ success: false, data: [], charts: {}, statistics: {}, mapPath: null });
+        }, 30000);
+
+        reqFlask.on('error', (err) => {
+          if (aborted) return;
+          aborted = true;
+          if (timeoutId) clearTimeout(timeoutId);
+          console.error('Flask analysis request error:', err);
+          resolve({ success: false, data: [], charts: {}, statistics: {}, mapPath: null });
+        });
+
+        reqFlask.on('timeout', () => {
+          if (aborted) return;
+          aborted = true;
+          console.error('Flask analysis socket timeout');
+          try { reqFlask.destroy(); } catch (_) {}
+          resolve({ success: false, data: [], charts: {}, statistics: {}, mapPath: null });
+        });
+
+        reqFlask.setTimeout(30000);
+        reqFlask.end();
+      } catch (e) {
+        console.error('fetchAnalysisFromFlask fatal error:', e);
+        resolve({ success: false, data: [], charts: {}, statistics: {}, mapPath: null });
+      }
+    });
+  }
+
+  try {
+    // Filter by researcher's state/district if available
+    const meId = String(req.session.user && req.session.user.researcherId || '');
+    const me = meId ? await researcherModel.findById(meId).lean() : null;
+    const qs = [];
+    if (me && me.state) qs.push('state=' + encodeURIComponent(me.state));
+    if (me && me.district) qs.push('district=' + encodeURIComponent(me.district));
+
+    // Optional: limit results or min_risk filter
+    // qs.push('limit=5000');
+
+    let payload = await fetchAnalysisFromFlask(qs.join('&'));
+
+    // Fallback: if no data for area filters, fetch global analysis
+    if (!payload || !payload.success || !Array.isArray(payload.data) || payload.data.length === 0) {
+      payload = await fetchAnalysisFromFlask('');
+    }
+
+    const hasMap = payload && payload.mapPath;
+    const viewFlaskBase = hasMap ? '' : (process.env.FLASK_URL || FLASK_URL || '').replace(/\/+$/, '');
+    if (hasMap) {
+      // Use local proxy to avoid cross-origin iframe/X-Frame-Options issues
+      payload.mapPath = '/proxy/flask-map';
+    }
+    return res.render('researcher-page', {
+      title: 'Real-time Analysis',
+      language,
+      activeTab: 'r-analysis',
+      section: 'analysis',
+      analysis: payload || {},
+      flaskBase: viewFlaskBase
+    });
+  } catch (e) {
+    console.error('/r/analysis error:', e);
+    return res.render('researcher-page', {
+      title: 'Real-time Analysis',
+      language,
+      activeTab: 'r-analysis',
+      section: 'analysis',
+      analysis: { success: false, data: [], charts: {}, statistics: {}, mapPath: null },
+      flaskBase: (process.env.FLASK_URL || FLASK_URL || '').replace(/\/+$/, '')
+    });
+  }
+});
+
+// Proxy the Flask-generated Folium map to this domain to ensure iframe renders
+app.get('/proxy/flask-map', async (req, res) => {
+  try {
+    const base = (process.env.FLASK_URL || FLASK_URL || 'http://127.0.0.1:5000').replace(/\/+$/, '');
+    const url = base + '/static/india_metal_pollution_map.html';
+    const lib = url.startsWith('https') ? https : http;
+
+    const options = {
+      timeout: 20000,
+      headers: {
+        'Accept': 'text/html,application/xhtml+xml',
+        'Connection': 'keep-alive',
+        'User-Agent': 'AquaFlow-Node-Client/1.0'
+      }
+    };
+
+    let data = '';
+    const reqFlask = lib.get(url, options, (resp) => {
+      resp.on('data', (c) => { data += c.toString(); });
+      resp.on('end', () => {
+        res.setHeader('Content-Type', 'text/html; charset=utf-8');
+        // Do NOT forward X-Frame-Options from upstream even if present
+        try { res.removeHeader('X-Frame-Options'); } catch(e) {}
+        try { res.removeHeader('Content-Security-Policy'); } catch(e) {}
+        res.status(resp.statusCode || 200).send(data);
+      });
+    });
+
+    reqFlask.on('error', (err) => {
+      console.error('proxy map error:', err);
+      res.status(502).send('Map unavailable');
+    });
+
+    reqFlask.setTimeout(20000, () => {
+      try { reqFlask.destroy(); } catch(_) {}
+      res.status(504).send('Map timeout');
+    });
+  } catch (e) {
+    console.error('proxy map fatal:', e);
+    res.status(500).send('Map error');
+  }
+});
+
+// Optional: JSON debug endpoint for analysis payload
+app.get('/r/analysis.json', requireLogin, requireRole(['researcher']), async (req, res) => {
+  try {
+    const meId = String(req.session.user && req.session.user.researcherId || '');
+    const me = meId ? await researcherModel.findById(meId).lean() : null;
+    const qs = [];
+    if (me && me.state) qs.push('state=' + encodeURIComponent(me.state));
+    if (me && me.district) qs.push('district=' + encodeURIComponent(me.district));
+
+    async function fetchAnalysisFromFlask(query) {
+      const base = (process.env.FLASK_URL || FLASK_URL || 'http://127.0.0.1:5000').replace(/\/+$/, '');
+      const url = base + '/api/analyze' + (query ? ('?' + query) : '');
+      return await new Promise((resolve) => {
+        const lib2 = url.startsWith('https') ? https : http;
+        const req2 = lib2.get(url, { headers: { 'Accept': 'application/json' }, timeout: 20000 }, (resp) => {
+          let buf = '';
+          resp.on('data', (c) => buf += c.toString());
+          resp.on('end', () => { try { resolve(JSON.parse(buf)); } catch(e){ resolve({ success:false, raw: buf }); } });
+        });
+        req2.on('error', () => resolve({ success:false }));
+        req2.setTimeout(20000, () => { try{ req2.destroy(); }catch(_){}; resolve({ success:false }); });
+      });
+    }
+
+    const payload = await fetchAnalysisFromFlask(qs.join('&'));
+    res.json(payload);
+  } catch (e) {
+    res.status(500).json({ success:false, error:'debug_failed' });
+  }
+});
+
+app.get('/r/posts', requireLogin, requireRole(['researcher']), async (req, res) => {
+  try {
+    const language = req.query.lang || 'en';
+    const posts = await researchPostModel.find({}).sort({ createdAt: -1 }).lean();
+    res.render('researcher-page', { title: 'Research Posts', language, activeTab: 'r-posts', section: 'posts', posts });
+  } catch(e) {
+    res.status(500).send('Failed to load posts');
+  }
+});
+
+app.post('/r/posts', requireLogin, requireRole(['researcher']), upload.single('pdf'), async (req, res) => {
+  try {
+    const file = req.file;
+    if (!file) return res.status(400).send('PDF file required');
+    const pdfUrl = '/uploads/research/' + file.filename;
+    const title = (req.body && req.body.title) ? String(req.body.title) : 'Untitled';
+    const authorId = String(req.session.user.researcherId || '');
+
+    const doc = new researchPostModel({
+      title,
+      content: pdfUrl,
+      authorId,
+      authorEmail: req.session.user.email || null,
+      authorName: 'Researcher'
+    });
+    await doc.save();
+    res.redirect('/r/posts');
+  } catch (e) {
+    console.error('post upload error', e);
+    res.status(500).send('Failed to create post');
+  }
+});
+
+// Researcher communications (reddit-like threads)
+app.get('/r/communications', requireLogin, requireRole(['researcher']), async (req, res) => {
+  try {
+    const language = req.query.lang || 'en';
+    const threads = await communicationModel.find({ authorRole: 'researcher' }).sort({ updatedAt: -1 }).lean();
+    const safeThreads = (threads||[]).map(t => ({
+      _id: t._id,
+      title: escapeHtml(t.title||''),
+      body: escapeHtml(t.body||''),
+      comments: (t.comments||[]).map(c => ({ authorName: c.authorName || c.authorRole || 'user', text: escapeHtml(c.text||'') }))
+    }));
+    res.render('researcher-page', { title: 'Communications', language, activeTab: 'r-comms', section: 'comms', threads: safeThreads });
+  } catch (e) {
+    console.error('researcher comm load', e);
+    res.status(500).send('Failed to load communications');
+  }
+});
+
+app.post('/r/communications', requireLogin, requireRole(['researcher']), async (req, res) => {
+  try {
+    const { title, body } = req.body || {};
+    if (!title || !body) return res.status(400).send('Missing title/body');
+    const meId = String(req.session.user.researcherId || '');
+    const me = await researcherModel.findById(meId).lean();
+    const doc = new communicationModel({
+      title,
+      body,
+      category: 'research',
+      state: me && me.state ? me.state : undefined,
+      district: me && me.district ? me.district : undefined,
+      authorId: meId,
+      authorRole: 'researcher',
+      authorName: (req.session.user.email || 'Researcher')
+    });
+    await doc.save();
+    res.redirect('/r/communications');
+  } catch (e) {
+    console.error('researcher thread create', e);
+    res.status(500).send('Failed to create thread');
+  }
+});
+
+app.post('/r/communications/:id/comment', requireLogin, requireRole(['researcher']), async (req, res) => {
+  try {
+    const id = req.params.id;
+    const { text } = req.body || {};
+    if (!text) return res.status(400).send('Missing text');
+    const comment = {
+      text,
+      authorId: String(req.session.user.researcherId || ''),
+      authorRole: 'researcher',
+      authorName: (req.session.user.email || 'Researcher')
+    };
+    await communicationModel.findByIdAndUpdate(id, { $push: { comments: comment }, $set: { updatedAt: new Date() } });
+    res.redirect('/r/communications');
+  } catch (e) {
+    console.error('researcher comment', e);
+    res.status(500).send('Failed to add comment');
+  }
+});
+
+app.get('/r/dashboard', requireLogin, requireRole(['researcher']), async (req, res) => {
+  try {
+    const language = req.query.lang || 'en';
+    const meId = String(req.session.user.researcherId || '');
+    const me = await researcherModel.findById(meId).lean();
+    const myTotal = await researchPostModel.countDocuments({ authorId: meId });
+    let areaList = [];
+    if (me && me.state && me.district) {
+      const peers = await researcherModel.find({ state: me.state, district: me.district }, { _id: 1 }).lean();
+      const peerIds = peers.map(p => String(p._id));
+      areaList = await researchPostModel.find({ authorId: { $in: peerIds } }).sort({ createdAt: -1 }).limit(20).lean();
+    }
+    res.render('researcher-page', {
+      title: 'Researcher Dashboard',
+      language,
+      activeTab: 'r-dashboard',
+      section: 'dashboard',
+      myTotal,
+      area: { state: (me && me.state) || null, district: (me && me.district) || null },
+      areaPosts: areaList
+    });
+  } catch (e) {
+    console.error('researcher dashboard', e);
+    res.status(500).send('Failed to load dashboard');
+  }
 });
 
 app.post('/log-location', (req, res) => {
