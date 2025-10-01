@@ -1687,11 +1687,25 @@ app.get('/proxy/flask-map', async (req, res) => {
     const reqFlask = lib.get(url, options, (resp) => {
       resp.on('data', (c) => { data += c.toString(); });
       resp.on('end', () => {
+        // Re-write HTML to ensure static assets load from Flask origin inside iframe
+        let html = data || '';
+        try {
+          // Inject base href if missing to resolve relative URLs
+          if (!/\<base\s+href=/i.test(html)) {
+            html = html.replace(/<head[^>]*>/i, (m) => m + `<base href="${base}/">`);
+          }
+          // Rewrite any absolute /static/ references to point to Flask base
+          html = html.replace(/(src|href)="\/?static\//gi, `$1="${base}/static/`);
+          // Remove meta-based frame restrictions that might be in the document
+          html = html.replace(/<meta[^>]+http-equiv=["']?X-Frame-Options["']?[^>]*>/gi, '');
+          html = html.replace(/<meta[^>]+http-equiv=["']?Content-Security-Policy["']?[^>]*>/gi, '');
+        } catch (_) {}
+
         res.setHeader('Content-Type', 'text/html; charset=utf-8');
-        // Do NOT forward X-Frame-Options from upstream even if present
+        // Ensure we don't send restrictive headers on the proxy response
         try { res.removeHeader('X-Frame-Options'); } catch(e) {}
         try { res.removeHeader('Content-Security-Policy'); } catch(e) {}
-        res.status(resp.statusCode || 200).send(data);
+        res.status(resp.statusCode || 200).send(html);
       });
     });
 
