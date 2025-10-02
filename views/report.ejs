@@ -33,6 +33,12 @@
       50%  { transform: scale(1.05); }
       100% { transform: scale(0.9); }
     }
+
+    .general-post{
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
 </style>
 <div class="page-header">
   <h2 class="page-title">Community Post</h2>
@@ -203,10 +209,12 @@
           </div>
 
           <!-- <div class="form-grid button-wrapper"> -->
-          <button type="submit" class="submit-btn">
-            <div class="fas fa-paper-plane"></div>
-            Publish Post
-          </button>
+          <div class="general-post">
+            <button type="submit" class="submit-btn">
+              <div class="fas fa-paper-plane"></div>
+              Publish Post
+            </button>
+          </div>
           <!-- </div> -->
       </form>
 </div>
