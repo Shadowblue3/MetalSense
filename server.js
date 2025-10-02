@@ -182,6 +182,7 @@ const ngoModel = require('./models/ngo');
 const researchPostModel = require('./models/researchPost');
 const heavySampleModel = require('./models/heavySample');
 const policyModel = require('./models/policy');
+const ngoTaskModel = require('./models/ngoTask');
 
 // Mock data for demonstration
 const mockData = {
@@ -1558,7 +1559,7 @@ app.post('/login', async (req, res) => {
       const ok = await bcrypt.compare(password, user.password || '');
       if (!ok) return res.status(401).json({ success: false, message: 'Invalid credentials' });
 
-      req.session.user = { role: 'official', email: user.userEmail || null, employeeId: user.id };
+      req.session.user = { role: 'official', email: user.userEmail || null, employeeId: user.id, isAdmin: user.designation === 'admin' };
       return res.json({ success: true, redirect: '/dashboard' });
     } else if (type === 'government') {
       const employeeId = String(req.body.employeeId || req.body.officialEmployeeId || req.body.governmentEmployeeId || '').trim();
@@ -1597,7 +1598,7 @@ app.post('/login', async (req, res) => {
           if (!user) return res.status(401).json({ success: false, message: 'Invalid credentials (admin/officer not found)' });
           const ok = await bcrypt.compare(password, user.password || '');
           if (!ok) return res.status(401).json({ success: false, message: 'Invalid credentials' });
-          req.session.user = { role: 'official', email: user.userEmail || null, employeeId: user.id };
+          req.session.user = { role: 'official', email: user.userEmail || null, employeeId: user.id, isAdmin: user.designation === 'admin' };
           return res.json({ success: true, redirect: '/dashboard' });
         }
       } else {
@@ -1759,6 +1760,71 @@ app.post('/policies', requireLogin, requireRole(['government']), async (req, res
   }
 });
 
+// Admin (official with admin designation): NGO Management
+app.get('/admin/ngo-management', requireLogin, requireRole(['official']), async (req, res) => {
+  try {
+    const language = req.query.lang || 'en';
+    if (!req.session.user || !req.session.user.isAdmin) return res.redirect('/dashboard');
+    const ngos = await ngoModel.find({}).sort({ createdAt: -1 }).lean();
+    const tasks = await ngoTaskModel.find({ assignedBy: req.session.user.employeeId }).sort({ createdAt: -1 }).lean();
+    res.render('admin-ngo-management', {
+      title: 'NGO Management',
+      language,
+      activeTab: 'ngo-management',
+      ngos,
+      tasks,
+      created: req.query.created === '1',
+      error: null
+    });
+  } catch (e) {
+    console.error('ngo-management page error', e);
+    res.render('admin-ngo-management', {
+      title: 'NGO Management',
+      language: req.query.lang || 'en',
+      activeTab: 'ngo-management',
+      ngos: [],
+      tasks: [],
+      created: false,
+      error: 'Failed to load data'
+    });
+  }
+});
+
+app.post('/admin/ngo-management/tasks', requireLogin, requireRole(['official']), async (req, res) => {
+  try {
+    if (!req.session.user || !req.session.user.isAdmin) return res.redirect('/dashboard');
+    const { title, description, ngoId } = req.body || {};
+    if (!title || !description || !ngoId) {
+      const language = req.query.lang || 'en';
+      const ngos = await ngoModel.find({}).lean();
+      const tasks = await ngoTaskModel.find({ assignedBy: req.session.user.employeeId }).sort({ createdAt: -1 }).lean();
+      return res.status(400).render('admin-ngo-management', {
+        title: 'NGO Management', language, activeTab: 'ngo-management', ngos, tasks, created: false, error: 'All fields are required.'
+      });
+    }
+    const task = new ngoTaskModel({
+      title: String(title).trim(),
+      description: String(description).trim(),
+      ngoId: String(ngoId).trim(),
+      assignedBy: req.session.user.employeeId
+    });
+    await task.save();
+    return res.redirect('/admin/ngo-management?created=1');
+  } catch (e) {
+    console.error('create NGO task error', e);
+    try {
+      const language = req.query.lang || 'en';
+      const ngos = await ngoModel.find({}).lean();
+      const tasks = await ngoTaskModel.find({ assignedBy: req.session.user.employeeId }).sort({ createdAt: -1 }).lean();
+      return res.status(500).render('admin-ngo-management', {
+        title: 'NGO Management', language, activeTab: 'ngo-management', ngos, tasks, created: false, error: 'Failed to assign task.'
+      });
+    } catch (_e) {
+      return res.status(500).send('Failed to assign task');
+    }
+  }
+});
+
 // NGO: Dashboard (sampling map)
 app.get('/ngo/dashboard', requireLogin, requireRole(['ngo']), async (req, res) => {
   try {
@@ -1792,6 +1858,50 @@ app.get('/ngo/policies', requireLogin, requireRole(['ngo']), async (req, res) =>
   } catch (e) {
     console.error('ngo policies error', e);
     res.render('ngo-policies', { title: 'Policies', language: req.query.lang || 'en', activeTab: 'ngo-policies', policies: [] });
+  }
+});
+
+// NGO: View assigned tasks from Admins (non-master)
+app.get('/ngo/tasks', requireLogin, requireRole(['ngo']), async (req, res) => {
+  try {
+    const language = req.query.lang || 'en';
+    const meId = String(req.session.user && req.session.user.ngoId || '');
+    const me = meId ? await ngoModel.findById(meId).lean() : null;
+    const ngoCode = me && me.id ? me.id : null;
+
+    const tasks = ngoCode
+      ? await ngoTaskModel.find({ ngoId: ngoCode }).sort({ createdAt: -1 }).lean()
+      : [];
+
+    return res.render('ngo-tasks', {
+      title: 'Assigned Tasks',
+      language,
+      activeTab: 'ngo-tasks',
+      ngoCode,
+      tasks
+    });
+  } catch (e) {
+    console.error('ngo tasks error', e);
+    const language = req.query.lang || 'en';
+    return res.render('ngo-tasks', {
+      title: 'Assigned Tasks',
+      language,
+      activeTab: 'ngo-tasks',
+      ngoCode: null,
+      tasks: []
+    });
+  }
+});
+
+// General Public: View government policies (read-only)
+app.get('/public/policies', requireLogin, requireRole(['general']), async (req, res) => {
+  try {
+    const language = req.query.lang || 'en';
+    const policies = await policyModel.find({}).sort({ createdAt: -1 }).lean();
+    res.render('public-policies', { title: 'Policies', language, activeTab: 'public-policies', policies });
+  } catch (e) {
+    console.error('public policies error', e);
+    res.render('public-policies', { title: 'Policies', language: req.query.lang || 'en', activeTab: 'public-policies', policies: [] });
   }
 });
 

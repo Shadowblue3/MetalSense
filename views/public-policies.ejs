@@ -1,0 +1,38 @@
+<div class="page-header">
+  <h2 class="page-title">Government Policies</h2>
+  <p class="subtitle">All policies published by the government are visible here for the general public.</p>
+</div>
+
+<section>
+  <div class="card">
+    <div class="card-header" style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
+      <h3 style="margin:0;">Policies</h3>
+      <div style="color:#6b7280;font-size:0.9rem;">Read-only</div>
+    </div>
+    <div class="card-body">
+      <% if (!policies || policies.length === 0) { %>
+        <p style="color:#6b7280;">No policies available.</p>
+      <% } else { %>
+        <ul style="list-style:none; padding:0; margin:0; display:flex; flex-direction:column; gap:14px;">
+          <% policies.forEach(function(p) { %>
+            <li style="border:1px solid #e5e7eb; border-radius:10px; padding:12px 14px; background:#fff;">
+              <div style="display:flex; justify-content:space-between; gap:12px; align-items:flex-start; flex-wrap:wrap;">
+                <div style="flex:1 1 auto; min-width:260px;">
+                  <h4 style="margin:0 0 6px 0; font-size:1.05rem; color:#111827;"><%= p.title %></h4>
+                  <p style="white-space:pre-wrap; margin:0; color:#374151;"><%= p.description %></p>
+                </div>
+                <div style="flex:0 0 auto; min-width:220px; text-align:right; color:#6b7280; font-size:0.9rem;">
+                  <div><i class="far fa-calendar"></i> Created: <%= (new Date(p.createdAt)).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' }) %></div>
+                  <div><i class="far fa-clock"></i> Updated: <%= (new Date(p.updatedAt)).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' }) %></div>
+                  <% if (p.createdBy) { %>
+                    <div style="margin-top:4px;"><i class="far fa-user"></i> By: <%= p.createdBy %></div>
+                  <% } %>
+                </div>
+              </div>
+            </li>
+          <% }); %>
+        </ul>
+      <% } %>
+    </div>
+  </div>
+</section>

@@ -79,6 +79,10 @@
                     <i class="fas fa-graduation-cap"></i>
                     <span>Education</span>
                 </a>
+                <a href="/public/policies?lang=<%= language %>" class="nav-item <%= activeTab === 'public-policies' ? 'active' : '' %>">
+                    <i class="fas fa-scale-balanced"></i>
+                    <span>Policies</span>
+                </a>
                 <% } %>
 
                 <% if (user && user.role === 'official') { %>
@@ -98,6 +102,12 @@
                     <i class="fas fa-comments"></i>
                     <span>Communications</span>
                 </a>
+                <% if (user.isAdmin) { %>
+                <a href="/admin/ngo-management?lang=<%= language %>" class="nav-item <%= activeTab === 'ngo-management' ? 'active' : '' %>">
+                    <i class="fas fa-handshake-angle"></i>
+                    <span>NGO Management</span>
+                </a>
+                <% } %>
                 <% } %>
 
                 <% if (user && user.role === 'government') { %>
@@ -127,6 +137,10 @@
                 <a href="/ngo/policies?lang=<%= language %>" class="nav-item <%= activeTab === 'ngo-policies' ? 'active' : '' %>">
                     <i class="fas fa-scale-balanced"></i>
                     <span>See Policies</span>
+                </a>
+                <a href="/ngo/tasks?lang=<%= language %>" class="nav-item <%= activeTab === 'ngo-tasks' ? 'active' : '' %>">
+                    <i class="fas fa-clipboard-list"></i>
+                    <span>Assigned Task</span>
                 </a>
                 <% } %>
 

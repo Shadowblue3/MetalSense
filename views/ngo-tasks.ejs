@@ -1,0 +1,41 @@
+<div class="page-header">
+  <h2 class="page-title">Assigned Tasks</h2>
+  <% if (ngoCode) { %>
+    <div class="last-updated">NGO Code: <strong><%= ngoCode %></strong></div>
+  <% } %>
+</div>
+
+<div class="card">
+  <div class="card-header">
+    <h3 style="margin:0;">Tasks from Admins</h3>
+  </div>
+  <div class="card-body">
+    <% if (!tasks || tasks.length === 0) { %>
+      <p style="color:#6b7280;">No tasks assigned to your NGO yet.</p>
+    <% } else { %>
+      <ul style="list-style:none; padding:0; margin:0; display:flex; flex-direction:column; gap:14px;">
+        <% tasks.forEach(function(t){ %>
+          <li style="border:1px solid #e5e7eb; border-radius:10px; padding:12px 14px; background:#fff;">
+            <div style="display:flex; justify-content:space-between; gap:12px; align-items:flex-start; flex-wrap:wrap;">
+              <div style="flex:1 1 auto; min-width:260px;">
+                <div style="display:flex; align-items:center; gap:8px;">
+                  <span style="font-weight:600; color:#111827;"><%= t.title %></span>
+                  <span style="font-size:0.8rem; color:#6b7280;">(Assigned By: <%= t.assignedBy %>)</span>
+                </div>
+                <p style="white-space:pre-wrap; margin:6px 0 0 0; color:#374151;"><%= t.description %></p>
+              </div>
+              <div style="flex:0 0 auto; min-width:220px; text-align:right; color:#6b7280; font-size:0.9rem;">
+                <div><i class="far fa-calendar"></i> Created: <%= (new Date(t.createdAt)).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' }) %></div>
+                <div><i class="far fa-clock"></i> Updated: <%= (new Date(t.updatedAt)).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' }) %></div>
+                <div><i class="far fa-flag"></i> Status: <%= t.status %></div>
+                <% if (t.dueDate) { %>
+                  <div><i class="far fa-hourglass"></i> Due: <%= (new Date(t.dueDate)).toLocaleDateString('en-IN', { dateStyle: 'medium' }) %></div>
+                <% } %>
+              </div>
+            </div>
+          </li>
+        <% }); %>
+      </ul>
+    <% } %>
+  </div>
+</div>

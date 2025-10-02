@@ -1,0 +1,118 @@
+<div class="page-header">
+  <h2 class="page-title">NGO Management</h2>
+  <p class="subtitle">Admins can view NGOs and assign tasks to them.</p>
+</div>
+
+<section style="display:flex; gap:24px; align-items:flex-start; flex-wrap:wrap;">
+  <div style="flex:2 1 520px; min-width:320px;">
+    <div class="card">
+      <div class="card-header" style="display:flex; align-items:center; justify-content:space-between;">
+        <h3 style="margin:0;">Existing NGOs</h3>
+        <% if (created) { %>
+          <span style="color:#065f46; background:#d1fae5; border:1px solid #10b981; padding:4px 8px; border-radius:6px; font-size:0.9rem;">Task Saved</span>
+        <% } %>
+      </div>
+      <div class="card-body">
+        <% if (!ngos || ngos.length === 0) { %>
+          <p style="color:#6b7280;">No NGOs registered.</p>
+        <% } else { %>
+          <div class="table-responsive">
+            <table class="table" style="width:100%; border-collapse:collapse;">
+              <thead>
+                <tr>
+                  <th style="text-align:left; padding:8px; border-bottom:1px solid #e5e7eb;">NGO ID</th>
+                  <th style="text-align:left; padding:8px; border-bottom:1px solid #e5e7eb;">Name</th>
+                  <th style="text-align:left; padding:8px; border-bottom:1px solid #e5e7eb;">Email</th>
+                  <th style="text-align:left; padding:8px; border-bottom:1px solid #e5e7eb;">State</th>
+                  <th style="text-align:left; padding:8px; border-bottom:1px solid #e5e7eb;">District</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% ngos.forEach(function(n){ %>
+                  <tr>
+                    <td style="padding:8px; border-bottom:1px solid #f3f4f6;"><%= n.id %></td>
+                    <td style="padding:8px; border-bottom:1px solid #f3f4f6;"><%= n.name %></td>
+                    <td style="padding:8px; border-bottom:1px solid #f3f4f6;"><%= n.email %></td>
+                    <td style="padding:8px; border-bottom:1px solid #f3f4f6;"><%= n.state || '' %></td>
+                    <td style="padding:8px; border-bottom:1px solid #f3f4f6;"><%= n.district || '' %></td>
+                  </tr>
+                <% }); %>
+              </tbody>
+            </table>
+          </div>
+        <% } %>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:16px;">
+      <div class="card-header">
+        <h3 style="margin:0;">Assigned Tasks</h3>
+      </div>
+      <div class="card-body">
+        <% if (!tasks || tasks.length === 0) { %>
+          <p style="color:#6b7280;">No tasks assigned yet.</p>
+        <% } else { %>
+          <ul style="list-style:none; padding:0; margin:0; display:flex; flex-direction:column; gap:14px;">
+            <% tasks.forEach(function(t){ %>
+              <li style="border:1px solid #e5e7eb; border-radius:10px; padding:12px 14px; background:#fff;">
+                <div style="display:flex; justify-content:space-between; gap:12px; align-items:flex-start; flex-wrap:wrap;">
+                  <div style="flex:1 1 auto; min-width:260px;">
+                    <div style="display:flex; align-items:center; gap:8px;">
+                      <span style="font-weight:600; color:#111827;"><%= t.title %></span>
+                      <span style="font-size:0.8rem; color:#6b7280;">(NGO: <%= t.ngoId %>)</span>
+                    </div>
+                    <p style="white-space:pre-wrap; margin:6px 0 0 0; color:#374151;"><%= t.description %></p>
+                  </div>
+                  <div style="flex:0 0 auto; min-width:220px; text-align:right; color:#6b7280; font-size:0.9rem;">
+                    <div><i class="far fa-calendar"></i> Created: <%= (new Date(t.createdAt)).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' }) %></div>
+                    <div><i class="far fa-clock"></i> Updated: <%= (new Date(t.updatedAt)).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' }) %></div>
+                    <div><i class="far fa-flag"></i> Status: <%= t.status %></div>
+                  </div>
+                </div>
+              </li>
+            <% }); %>
+          </ul>
+        <% } %>
+      </div>
+    </div>
+  </div>
+
+  <div style="flex:1 1 380px; min-width:300px;">
+    <div class="card">
+      <div class="card-header">
+        <h3 style="margin:0;">Assign Task to NGO</h3>
+      </div>
+      <div class="card-body">
+        <% if (error) { %>
+          <div style="margin-bottom:12px; color:#7f1d1d; background:#fee2e2; border:1px solid #ef4444; border-radius:6px; padding:8px 12px;">
+            <%= error %>
+          </div>
+        <% } %>
+        <form action="/admin/ngo-management/tasks" method="POST" style="display:flex; flex-direction:column; gap:12px;">
+          <div>
+            <label for="taskTitle" style="display:block; font-weight:600; margin-bottom:6px;">Task Title</label>
+            <input id="taskTitle" name="title" type="text" required maxlength="200" placeholder="Enter task title"
+                   style="width:100%; padding:10px 12px; border:1px solid #d1d5db; border-radius:8px; outline:none;" />
+          </div>
+          <div>
+            <label for="taskDesc" style="display:block; font-weight:600; margin-bottom:6px;">Task Description</label>
+            <textarea id="taskDesc" name="description" required maxlength="10000" placeholder="Describe the task in detail..."
+                      rows="10" style="width:100%; min-height:220px; padding:10px 12px; border:1px solid #d1d5db; border-radius:8px; resize:vertical; outline:none;"></textarea>
+            <div style="color:#6b7280; font-size:0.85rem; margin-top:4px;">Max 10,000 characters</div>
+          </div>
+          <div>
+            <label for="ngoId" style="display:block; font-weight:600; margin-bottom:6px;">Enter NGO ID</label>
+            <input id="ngoId" name="ngoId" type="text" required placeholder="e.g., NGOABC123"
+                   style="width:100%; padding:10px 12px; border:1px solid #d1d5db; border-radius:8px; outline:none;" />
+            <div style="color:#6b7280; font-size:0.85rem; margin-top:4px;">Copy the NGO ID from the table above.</div>
+          </div>
+          <div style="display:flex; justify-content:flex-end; gap:10px;">
+            <button type="submit" class="btn-primary" style="padding:10px 14px; border:none; border-radius:8px; background:#2563eb; color:white; cursor:pointer;">
+              <i class="fas fa-plus"></i> Assign Task
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</section>
