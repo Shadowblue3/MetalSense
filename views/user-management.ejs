@@ -1,3 +1,165 @@
+<style>
+  /* === FORM STYLING WITH NEW CLASSES === */
+.styled-form {
+  display: grid;
+  gap: 0.8rem;
+  margin-top: 0.5rem;
+}
+
+.styled-row {
+  display: flex;
+  flex-direction: column;
+}
+
+.styled-row label {
+  font-size: 12px;
+  font-weight: 500;
+  color: #374151;
+  margin-bottom: 4px;
+}
+
+.styled-row input {
+  padding: 8px 10px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 13px;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.styled-row input:focus {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 2px rgba(59,130,246,0.2);
+}
+
+/* === BUTTON STYLING WITH NEW CLASS === */
+.styled-btn {
+  padding: 6px 14px;
+  border: none;
+  border-radius: 6px;
+  background: #3b82f6;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.2s, transform 0.1s;
+}
+
+.styled-btn:hover {
+  background: #2563eb;
+}
+
+.styled-btn:active {
+  transform: scale(0.96);
+}
+
+.styled-btn-small {
+  font-size: 11px;
+  padding: 4px 10px;
+}
+
+/* === FORM ACTIONS === */
+.styled-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+
+/* === MODAL === */
+.styled-modal {
+  background: #fff;
+  padding: 1.5rem;
+  border-radius: 10px;
+  max-width: 520px;
+  width: 100%;
+  box-shadow: 0 6px 20px rgba(0,0,0,0.15);
+}
+
+.styled-modal h3 {
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 1rem;
+}
+
+.styled-modal input {
+  border-radius: 6px;
+}
+
+  .table {
+  font-size: 12px; /* slightly larger for readability */
+  width: 100%;
+  border-collapse: collapse;
+  border: 1px solid #ddd;
+  background: #fff;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+}
+
+.table thead {
+  background: #f3f4f6; /* light gray header */
+  color: #111827;
+  text-align: left;
+}
+
+.table thead th {
+  padding: 10px 12px;
+  font-weight: 600;
+  font-size: 13px;
+  border-bottom: 2px solid #e5e7eb;
+}
+
+.table tbody td {
+  padding: 8px 12px;
+  border-bottom: 1px solid #e5e7eb;
+  font-size: 12px;
+  color: #374151;
+}
+
+.table tbody tr:nth-child(even) {
+  background: #f9fafb; /* zebra effect */
+}
+
+.table tbody tr:hover {
+  background: #eef2ff; /* soft hover highlight */
+  transition: background 0.2s ease;
+}
+
+.table-responsive {
+  border-radius: 8px;
+  overflow-x: auto;
+  margin-top: 0.5rem;
+}
+
+/* Buttons inside table */
+.table .btn {
+  font-size: 11px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  border: none;
+  cursor: pointer;
+  background: #3b82f6;
+  color: #fff;
+  transition: background 0.2s;
+}
+
+.table .btn:hover {
+  background: #2563eb;
+}
+
+.table .btn-small {
+  font-size: 11px;
+  padding: 3px 6px;
+}
+
+.btnCont{
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+</style>
+
 <div class="page-header">
   <h2 class="page-title">Government: User Management</h2>
   <p class="subtitle">Manage NGO enlistment and Researcher accounts.</p>
@@ -6,15 +168,17 @@
 <div class="dashboard-grid">
   <section class="dashboard-card">
     <h3 class="card-title">NGOs</h3>
-    <form id="ngoCreateForm" class="form-grid" onsubmit="return false;">
-      <div class="form-row"><label>Name</label><input type="text" name="name" required /></div>
-      <div class="form-row"><label>Email</label><input type="email" name="email" required /></div>
-      <div class="form-row"><label>Registration No</label><input type="text" name="registrationNo" /></div>
-      <div class="form-row"><label>Focus Areas (comma separated)</label><input type="text" name="focusAreas" /></div>
-      <div class="form-row"><label>State</label><input type="text" name="state" /></div>
-      <div class="form-row"><label>District</label><input type="text" name="district" /></div>
-      <div class="form-row"><label>Password</label><input type="password" name="password" required /></div>
-      <div class="form-actions"><button class="btn" id="ngoCreateBtn" type="submit">Add NGO</button></div>
+    <form id="ngoCreateForm" class="form-grid styled-form" onsubmit="return false;">
+      <div class="form-row styled-row"><label>Name</label><input type="text" name="name" required /></div>
+      <div class="form-row styled-row"><label>Email</label><input type="email" name="email" required /></div>
+      <div class="form-row styled-row"><label>Registration No</label><input type="text" name="registrationNo" /></div>
+      <div class="form-row styled-row"><label>Focus Areas (comma separated)</label><input type="text" name="focusAreas" /></div>
+      <div class="form-row styled-row"><label>State</label><input type="text" name="state" /></div>
+      <div class="form-row styled-row"><label>District</label><input type="text" name="district" /></div>
+      <div class="form-row styled-row"><label>Password</label><input type="password" name="password" required /></div>
+      <div class="btnCont">
+        <div class="form-actions styled-actions"><button class="btn styled-btn" id="ngoCreateBtn" type="submit">Add NGO</button></div>
+      </div>
     </form>
     <div id="ngoMsg" style="margin-top:0.5rem;"></div>
     <div class="table-responsive" style="margin-top:1rem;">
@@ -27,14 +191,16 @@
 
   <section class="dashboard-card">
     <h3 class="card-title">Researchers</h3>
-    <form id="researcherCreateForm" class="form-grid" onsubmit="return false;">
-      <div class="form-row"><label>Name</label><input type="text" name="name" required /></div>
-      <div class="form-row"><label>Email</label><input type="email" name="email" required /></div>
-      <div class="form-row"><label>Affiliation</label><input type="text" name="affiliation" /></div>
-      <div class="form-row"><label>State</label><input type="text" name="state" /></div>
-      <div class="form-row"><label>District</label><input type="text" name="district" /></div>
-      <div class="form-row"><label>Password</label><input type="password" name="password" required /></div>
-      <div class="form-actions"><button class="btn" id="researcherCreateBtn" type="submit">Add Researcher</button></div>
+    <form id="researcherCreateForm" class="form-grid styled-form" onsubmit="return false;">
+      <div class="form-row styled-row"><label>Name</label><input type="text" name="name" required /></div>
+      <div class="form-row styled-row"><label>Email</label><input type="email" name="email" required /></div>
+      <div class="form-row styled-row"><label>Affiliation</label><input type="text" name="affiliation" /></div>
+      <div class="form-row styled-row"><label>State</label><input type="text" name="state" /></div>
+      <div class="form-row styled-row"><label>District</label><input type="text" name="district" /></div>
+      <div class="form-row styled-row"><label>Password</label><input type="password" name="password" required /></div>
+      <div class="btnCont">
+        <div class="form-actions styled-actions"><button class="btn styled-btn" id="researcherCreateBtn" type="submit">Add Researcher</button></div>
+      </div>
     </form>
     <div id="researcherMsg" style="margin-top:0.5rem;"></div>
     <div class="table-responsive" style="margin-top:1rem;">
@@ -48,22 +214,22 @@
 
 <!-- Edit modal reused for NGO and Researcher -->
 <div id="editModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.4); align-items:center; justify-content:center;">
-  <div style="background:#fff; padding:1rem; border-radius:8px; width:100%; max-width:520px;">
+  <div class="styled-modal" style="background:#fff; padding:1rem; border-radius:8px; width:100%; max-width:520px;">
     <h3 style="margin-top:0;" id="editTitle">Edit</h3>
-    <form id="editForm" onsubmit="return false;">
+    <form id="editForm" class="styled-form" onsubmit="return false;">
       <input type="hidden" name="type" />
       <input type="hidden" name="id" />
-      <div class="form-row"><label>Name</label><input type="text" name="name" required /></div>
-      <div class="form-row"><label>Email</label><input type="email" name="email" required /></div>
-      <div class="form-row" id="affiliationRow" style="display:none;"><label>Affiliation</label><input type="text" name="affiliation" /></div>
-      <div class="form-row" id="registrationRow" style="display:none;"><label>Registration No</label><input type="text" name="registrationNo" /></div>
-      <div class="form-row" id="focusAreasRow" style="display:none;"><label>Focus Areas</label><input type="text" name="focusAreas" placeholder="comma separated" /></div>
-      <div class="form-row"><label>State</label><input type="text" name="state" /></div>
-      <div class="form-row"><label>District</label><input type="text" name="district" /></div>
-      <div class="form-row"><label>New Password (optional)</label><input type="password" name="password" /></div>
-      <div class="form-actions" style="display:flex; gap:0.5rem;">
-        <button class="btn" id="saveEditBtn" type="submit">Save</button>
-        <button class="btn" type="button" id="cancelEditBtn" style="background:#e5e7eb;">Cancel</button>
+      <div class="form-row styled-row"><label>Name</label><input type="text" name="name" required /></div>
+      <div class="form-row styled-row"><label>Email</label><input type="email" name="email" required /></div>
+      <div class="form-row styled-row" id="affiliationRow" style="display:none;"><label>Affiliation</label><input type="text" name="affiliation" /></div>
+      <div class="form-row styled-row" id="registrationRow" style="display:none;"><label>Registration No</label><input type="text" name="registrationNo" /></div>
+      <div class="form-row styled-row" id="focusAreasRow" style="display:none;"><label>Focus Areas</label><input type="text" name="focusAreas" placeholder="comma separated" /></div>
+      <div class="form-row styled-row"><label>State</label><input type="text" name="state" /></div>
+      <div class="form-row styled-row"><label>District</label><input type="text" name="district" /></div>
+      <div class="form-row styled-row"><label>New Password (optional)</label><input type="password" name="password" /></div>
+      <div class="form-actions styled-actions" style="display:flex; gap:0.5rem;">
+        <button class="btn styled-btn" id="saveEditBtn" type="submit">Save</button>
+        <button class="btn styled-btn" type="button" id="cancelEditBtn" style="background:#e5e7eb; color:#111;">Cancel</button>
       </div>
     </form>
     <div id="editMsg" style="margin-top:0.5rem;"></div>

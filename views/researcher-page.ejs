@@ -1,3 +1,36 @@
+<style>
+  .res-form-row{
+    display: flex;
+    flex-direction: column;
+    padding: 10px;
+    gap: 10px;
+  }
+  .res-form-row label{
+    font-weight: bolder;
+  }
+  .res-form-des{
+    width: 70vw;
+    /* margin-left: 5px; */
+    border: 0.9px solid black;
+    padding: 10px;
+    
+  }
+  .des-box{
+    display: flex;
+    flex-direction: column;
+    padding: 10px;
+    gap: 10px;
+  }
+  .des-box label{
+    font-weight: bolder;
+  }
+  .res-btn{
+    width: 77vw;
+    font-size: 15px;
+  }
+</style>
+
+
 <div class="page-header">
   <h2 class="page-title"><%= title || 'Researcher' %></h2>
 </div>
@@ -207,16 +240,16 @@
   <section class="card" style="padding:1rem;margin-bottom:1rem;">
     <h3 style="margin-top:0;">Create Thread</h3>
     <form id="threadForm" method="post" action="/r/communications" class="form-grid">
-      <div class="form-row">
+      <div class="res-form-row">
         <label>Title</label>
-        <input type="text" name="title" required placeholder="Enter a descriptive title" />
+        <input class = "res-form-tit" type="text" name="title" required placeholder="Enter a descriptive title" />
       </div>
-      <div class="form-row">
+      <div class="form-row des-box">
         <label>Body</label>
-        <textarea name="body" required style="min-height:140px;" placeholder="Write your research discussion or question..."></textarea>
+        <textarea class = "res-form-des" name="body" required style="min-height:140px;" placeholder="Write your research discussion or question..."></textarea>
       </div>
       <div class="form-actions" style="display:flex;justify-content:flex-end;">
-        <button class="btn" type="submit"><i class="fas fa-paper-plane"></i> Create Thread</button>
+        <button class="btn res-btn" type="submit"><i class="fas fa-paper-plane"></i> Create Thread</button>
       </div>
     </form>
   </section>

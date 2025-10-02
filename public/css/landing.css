@@ -57,6 +57,7 @@ p {
     --primary-500: #3b82f6;
     --primary-600: #2563eb;
     --primary-700: #1d4ed8;
+    --prime-100: #ee8d59;
 
     --secondary-50: #f0fdf4;
     --secondary-500: #22c55e;
@@ -269,7 +270,7 @@ hero-title h2{
 }
 
 .gradient-text {
-    background: linear-gradient(135deg, var(--primary-600), var(--teal-600));
+    background: linear-gradient(135deg, var(--prime-100), var(--teal-600));
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
@@ -1528,4 +1529,9 @@ hero-title h2{
     .metrics-grid {
         grid-template-columns: 1fr;
     }
+}
+
+.lettering{
+    /* border: 2px solid red; */
+    height: 61px;
 }

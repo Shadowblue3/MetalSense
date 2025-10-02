@@ -271,20 +271,8 @@ app.get('/dashboard', requireLogin, async (req, res) => {
   try {
     const language = req.query.lang || 'en';
 
-    // Compute total cases from Disease_Data with numeric conversion (handles strings)
-    const agg = await dataModel.aggregate([
-      {
-        $group: {
-          _id: null,
-          totalCases: {
-            $sum: {
-              $convert: { input: '$Cases', to: 'double', onError: 0, onNull: 0 }
-            }
-          }
-        }
-      }
-    ]);
-    const totalCases = (agg && agg[0] && typeof agg[0].totalCases === 'number') ? agg[0].totalCases : 0;
+    // Compute total cases as number of JSON documents in Disease_Data
+    const totalCases = await dataModel.countDocuments({});
 
     const role = req.session.user && req.session.user.role;
 
@@ -1644,10 +1632,7 @@ app.post('/login', async (req, res) => {
 app.get('/data-plotting', requireLogin, requireRole(['government']), async (req, res) => {
   try {
     const language = req.query.lang || 'en';
-    const agg = await dataModel.aggregate([
-      { $group: { _id: null, totalCases: { $sum: { $ifNull: ['$Cases', 0] } }, totalDeaths: { $sum: { $ifNull: ['$Deaths', 0] } } } }
-    ]);
-    const totalCases = (agg && agg[0] && agg[0].totalCases) ? agg[0].totalCases : 0;
+    const totalCases = await dataModel.countDocuments({});
 
     let riskLevel = 'Low';
     if (totalCases > 200000) riskLevel = 'High';
@@ -1760,10 +1745,7 @@ app.post('/policies', requireLogin, requireRole(['government']), async (req, res
 app.get('/ngo/dashboard', requireLogin, requireRole(['ngo']), async (req, res) => {
   try {
     const language = req.query.lang || 'en';
-    const agg = await dataModel.aggregate([
-      { $group: { _id: null, totalCases: { $sum: { $ifNull: ['$Cases', 0] } } } }
-    ]);
-    const totalCases = (agg && agg[0] && agg[0].totalCases) ? agg[0].totalCases : 0;
+    const totalCases = await dataModel.countDocuments({});
 
     return res.render('ngodashboard', {
       title: 'NGO Dashboard',

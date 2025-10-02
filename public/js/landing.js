@@ -1,4 +1,4 @@
-let words = ["redicting", "reventing", "rotects from"];
+let words = ["Detecting", "Analyzing", "Reporting", "Preventing"];
 
 async function interval_1(){
   await new Promise(resolve => setTimeout(resolve, 80));
@@ -22,7 +22,7 @@ async function main(){
       await interval_2();
 
       // delete the word
-      while(elem.innerHTML.length !== 1){
+      while(elem.innerHTML.length !== 0){
         elem.innerHTML = elem.innerHTML.slice(0,-1);
         await interval_1();
       }
