@@ -66,6 +66,24 @@ cloudinary.config({
   api_secret: process.env.CLOUDINARY_API_SECRET
 });
 
+// HTTP keep-alive agents and simple in-memory caches for Flask proxies
+const keepAliveHttpAgent = new http.Agent({ keepAlive: true, maxSockets: 20, maxFreeSockets: 10, keepAliveMsecs: 10000 });
+const keepAliveHttpsAgent = new https.Agent({ keepAlive: true, maxSockets: 20, maxFreeSockets: 10, keepAliveMsecs: 10000 });
+
+// Plot (PNG) cache and inflight dedupe
+const plotCache = new Map(); // key -> { buf: Buffer, ts: number }
+const inflightPlot = new Map(); // key -> Promise<Buffer>
+const PLOT_TTL_MS = Number(process.env.PLOT_CACHE_TTL_MS || 3 * 60 * 1000); // 3 minutes
+
+// Map (HTML) cache and inflight dedupe
+const mapCache = new Map(); // key -> { html: string, ts: number }
+const inflightMap = new Map(); // key -> Promise<string>
+const MAP_TTL_MS = Number(process.env.MAP_CACHE_TTL_MS || 5 * 60 * 1000); // 5 minutes
+
+// Analysis JSON cache to reduce repeated heavy calls
+const analysisCache = new Map(); // key(query) -> { payload: any, ts: number }
+const ANALYSIS_TTL_MS = Number(process.env.ANALYSIS_CACHE_TTL_MS || 2 * 60 * 1000); // 2 minutes
+
 // Helper: Send email via SendGrid HTTP API (avoids SMTP connectivity issues on PaaS)
 async function sendViaSendGrid({ from, to, subject, text, html, apiKey, timeoutMs = 15000 }) {
   return await new Promise((resolve, reject) => {
@@ -1892,80 +1910,83 @@ app.get('/r/analysis', requireLogin, requireRole(['researcher']), async (req, re
     const base = (process.env.FLASK_URL || FLASK_URL || 'http://127.0.0.1:5000').replace(/\/+$/, '');
     const url = base + '/api/analyze' + (query ? ('?' + query) : '');
 
-    return await new Promise((resolve) => {
+    // Serve from cache if fresh
+    const cached = analysisCache.get(query || '_global');
+    const now = Date.now();
+    if (cached && (now - cached.ts) < ANALYSIS_TTL_MS) {
+      return cached.payload;
+    }
+
+    const fetchJson = (tries = 2) => new Promise((resolve) => {
       try {
         const lib = url.startsWith('https') ? https : http;
         const options = {
-          timeout: 30000,
+          timeout: 55000,
           headers: {
             'Accept': 'application/json',
             'Connection': 'keep-alive',
             'User-Agent': 'AquaFlow-Node-Client/1.0'
-          }
+          },
+          agent: url.startsWith('https') ? keepAliveHttpsAgent : keepAliveHttpAgent,
         };
 
-        let timeoutId;
-        let aborted = false;
-
-        const reqFlask = lib.get(url, options, (resp) => {
-          if (timeoutId) clearTimeout(timeoutId);
-          let data = '';
-          resp.on('data', (c) => { data += c.toString(); });
-          resp.on('end', () => {
-            if (aborted) return;
-            try {
-              const json = JSON.parse(data);
-              resolve(json && typeof json === 'object' ? json : { success: false, data: [], charts: {}, statistics: {}, mapPath: null });
-            } catch (e) {
-              console.error('Flask analysis parse error:', e);
-              console.error('Raw response:', data);
+        const attempt = (n) => {
+          let aborted = false;
+          const reqFlask = lib.get(url, options, (resp) => {
+            let data = '';
+            resp.on('data', (c) => { data += c.toString(); });
+            resp.on('end', () => {
+              if (aborted) return;
+              try {
+                const json = JSON.parse(data);
+                const payload = (json && typeof json === 'object') ? json : { success: false, data: [], charts: {}, statistics: {}, mapPath: null };
+                analysisCache.set(query || '_global', { payload, ts: Date.now() });
+                resolve(payload);
+              } catch (e) {
+                console.error('Flask analysis parse error:', e);
+                console.error('Raw response:', data);
+                if (n < tries) return setTimeout(() => attempt(n + 1), n * 500);
+                resolve({ success: false, data: [], charts: {}, statistics: {}, mapPath: null });
+              }
+            });
+            resp.on('error', (err) => {
+              if (aborted) return;
+              console.error('Flask analysis response error:', err);
+              if (n < tries) return setTimeout(() => attempt(n + 1), n * 500);
               resolve({ success: false, data: [], charts: {}, statistics: {}, mapPath: null });
-            }
-          });
-          resp.on('error', (err) => {
-            if (aborted) return;
-            console.error('Flask analysis response error:', err);
-            resolve({ success: false, data: [], charts: {}, statistics: {}, mapPath: null });
-          });
-          resp.on('close', () => {
-            if (aborted) return;
-            if (!data) {
+            });
+            resp.on('close', () => {
+              if (aborted) return;
+              if (n < tries) return setTimeout(() => attempt(n + 1), n * 500);
               console.error('Flask analysis connection closed without data');
               resolve({ success: false, data: [], charts: {}, statistics: {}, mapPath: null });
-            }
+            });
           });
-        });
 
-        timeoutId = setTimeout(() => {
-          aborted = true;
-          try { reqFlask.destroy(); } catch (_) {}
-          console.error('Flask analysis request timeout after 30 seconds');
-          resolve({ success: false, data: [], charts: {}, statistics: {}, mapPath: null });
-        }, 30000);
+          reqFlask.on('error', (err) => {
+            if (n < tries) return setTimeout(() => attempt(n + 1), n * 500);
+            console.error('Flask analysis request error:', err);
+            resolve({ success: false, data: [], charts: {}, statistics: {}, mapPath: null });
+          });
 
-        reqFlask.on('error', (err) => {
-          if (aborted) return;
-          aborted = true;
-          if (timeoutId) clearTimeout(timeoutId);
-          console.error('Flask analysis request error:', err);
-          resolve({ success: false, data: [], charts: {}, statistics: {}, mapPath: null });
-        });
+          reqFlask.setTimeout(55000, () => {
+            aborted = true;
+            try { reqFlask.destroy(); } catch (_) {}
+            if (n < tries) return setTimeout(() => attempt(n + 1), n * 500);
+            console.error('Flask analysis request timeout after 55 seconds');
+            resolve({ success: false, data: [], charts: {}, statistics: {}, mapPath: null });
+          });
 
-        reqFlask.on('timeout', () => {
-          if (aborted) return;
-          aborted = true;
-          console.error('Flask analysis socket timeout');
-          try { reqFlask.destroy(); } catch (_) {}
-          resolve({ success: false, data: [], charts: {}, statistics: {}, mapPath: null });
-        });
-
-        reqFlask.setTimeout(30000);
-        reqFlask.end();
+          reqFlask.end();
+        };
+        attempt(1);
       } catch (e) {
         console.error('fetchAnalysisFromFlask fatal error:', e);
         resolve({ success: false, data: [], charts: {}, statistics: {}, mapPath: null });
       }
     });
+
+    return await fetchJson(2);
   }
 
   try {
@@ -2027,61 +2048,105 @@ app.get('/r/analysis', requireLogin, requireRole(['researcher']), async (req, re
 app.get('/proxy/flask-plot', async (req, res) => {
   try {
     const base = (process.env.FLASK_URL || FLASK_URL || 'http://127.0.0.1:5000').replace(/\/+$/, '');
-    // Forward query string to preserve filters (state, district, etc.)
     const qs = req.originalUrl.split('?')[1] || '';
+    const key = qs || '_default';
     const primaryUrl = base + '/api/plot' + (qs ? ('?' + qs) : '');
     const fallbackUrl = base + '/api/plot';
 
-    let responded = false;
-    function sendPng(buf) {
-      if (responded) return;
-      responded = true;
+    const sendPng = (buf, cacheStatus = 'MISS') => {
       res.status(200);
       res.setHeader('Content-Type', 'image/png');
       res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
+      res.setHeader('X-Cache', cacheStatus);
       res.end(buf);
-    }
-    function sendError(status, message) {
-      if (responded) return;
-      responded = true;
-      try { res.setHeader('Content-Type', 'text/plain; charset=utf-8'); } catch(_) {}
-      res.status(status).send(message);
+    };
+
+    const serveStaleIfAny = (statusCode = 502, message = 'Plot unavailable') => {
+      const entry = plotCache.get(key) || plotCache.get('_default');
+      if (entry && entry.buf) {
+        res.setHeader('Warning', '110 - "Response is stale"');
+        return sendPng(entry.buf, 'STALE');
+      }
+      res.status(statusCode).send(message);
+    };
+
+    // Serve fresh cache if valid
+    const cached = plotCache.get(key);
+    const now = Date.now();
+    if (cached && (now - cached.ts) < PLOT_TTL_MS) {
+      return sendPng(cached.buf, 'HIT');
     }
 
-    function fetchPlot(url, cb) {
+    // If there's an inflight fetch for this key, await it
+    if (inflightPlot.has(key)) {
+      try {
+        const buf = await inflightPlot.get(key);
+        return sendPng(buf, cached ? 'STALE-REFRESH' : 'MISS');
+      } catch (_) {
+        return serveStaleIfAny();
+      }
+    }
+
+    const fetchOnce = (url, tries = 2) => new Promise((resolve, reject) => {
       const lib = url.startsWith('https') ? https : http;
       const options = {
-        timeout: 20000,
         headers: {
           'Accept': 'image/png',
           'Connection': 'keep-alive',
           'User-Agent': 'AquaFlow-Node-Client/1.0'
-        }
+        },
+        timeout: 55000,
+        agent: url.startsWith('https') ? keepAliveHttpsAgent : keepAliveHttpAgent,
       };
-      const reqFlask = lib.get(url, options, (resp) => {
-        const chunks = [];
-        resp.on('data', (chunk) => chunks.push(Buffer.from(chunk)));
-        resp.on('end', () => {
-          const buf = Buffer.concat(chunks);
-          const ct = String((resp.headers && (resp.headers['content-type'] || resp.headers['Content-Type'])) || '').toLowerCase();
-          cb(null, resp.statusCode || 200, ct, buf);
+      let done = false;
+      const attempt = (n) => {
+        const reqFlask = lib.get(url, options, (resp) => {
+          const chunks = [];
+          resp.on('data', (chunk) => chunks.push(Buffer.from(chunk)));
+          resp.on('end', () => {
+            if (done) return;
+            const buf = Buffer.concat(chunks);
+            const ct = String((resp.headers && (resp.headers['content-type'] || resp.headers['Content-Type'])) || '').toLowerCase();
+            if (resp.statusCode === 200 && ct.includes('image/png') && buf.length > 0) return resolve(buf);
+            if (n < tries) return setTimeout(() => attempt(n + 1), n * 500);
+            reject(new Error('bad_status_or_type_' + (resp.statusCode || '0') + '_' + ct));
+          });
         });
-      });
-      reqFlask.on('error', (err) => cb(err));
-      reqFlask.setTimeout(20000, () => { try { reqFlask.destroy(); } catch(_) {}; cb(new Error('timeout')); });
-    }
-
-    fetchPlot(primaryUrl, (err, code, ct, buf) => {
-      const okPng = !err && code === 200 && ct.includes('image/png') && buf && buf.length > 0;
-      if (okPng) return sendPng(buf);
-      // On failure or non-PNG, try without filters as a safe fallback
-      fetchPlot(fallbackUrl, (err2, code2, ct2, buf2) => {
-        const okPng2 = !err2 && code2 === 200 && ct2.includes('image/png') && buf2 && buf2.length > 0;
-        if (okPng2) return sendPng(buf2);
-        console.error('proxy plot unavailable');
-        return sendError(502, 'Plot unavailable');
-      });
+        reqFlask.on('error', (err) => {
+          if (done) return;
+          if (n < tries) return setTimeout(() => attempt(n + 1), n * 500);
+          reject(err);
+        });
+        reqFlask.setTimeout(55000, () => { try { reqFlask.destroy(); } catch(_) {}; if (n < tries) return setTimeout(() => attempt(n + 1), n * 500); reject(new Error('timeout')); });
+      };
+      attempt(1);
     });
+
+    const inflight = (async () => {
+      try {
+        let buf;
+        try {
+          buf = await fetchOnce(primaryUrl, 2);
+        } catch (_) {
+          buf = await fetchOnce(fallbackUrl, 2);
+        }
+        // update cache
+        plotCache.set(key, { buf, ts: Date.now() });
+        return buf;
+      } finally {
+        inflightPlot.delete(key);
+      }
+    })();
+
+    inflightPlot.set(key, inflight);
+
+    try {
+      const buf = await inflight;
+      return sendPng(buf, cached ? 'STALE-REFRESH' : 'MISS');
+    } catch (e) {
+      console.error('proxy plot unavailable', e && e.message);
+      return serveStaleIfAny();
+    }
   } catch (e) {
     console.error('proxy plot fatal:', e);
     if (!res.headersSent) {
@@ -2094,54 +2159,96 @@ app.get('/proxy/flask-plot', async (req, res) => {
 app.get('/proxy/flask-map', async (req, res) => {
   try {
     const base = (process.env.FLASK_URL || FLASK_URL || 'http://127.0.0.1:5000').replace(/\/+$/, '');
+    const key = '_map';
 
-    function fetchUrl(url, accept, cb) {
-      const lib = url.startsWith('https') ? https : http;
-      const options = {
-        timeout: 25000,
-        headers: {
-          'Accept': accept,
-          'Connection': 'keep-alive',
-          'User-Agent': 'AquaFlow-Node-Client/1.0'
-        }
-      };
-      const reqFlask = lib.get(url, options, (resp) => {
-        let data = '';
-        resp.on('data', (c) => { data += c.toString(); });
-        resp.on('end', () => cb(null, resp.statusCode || 200, data));
-      });
-      reqFlask.on('error', (err) => cb(err));
-      reqFlask.setTimeout(25000, () => { try { reqFlask.destroy(); } catch(_) {}; cb(new Error('timeout')); });
-    }
-
-    function sendHtml(html, statusCode) {
+    const sanitizeAndSendHtml = (html, statusCode, cacheStatus = 'MISS') => {
       let out = html || '';
       try {
-        // Clean potential restrictive meta tags if present
         out = out.replace(/<meta[^>]+http-equiv=["']?X-Frame-Options["']?[^>]*>/gi, '');
         out = out.replace(/<meta[^>]+http-equiv=["']?Content-Security-Policy["']?[^>]*>/gi, '');
       } catch (_) {}
       res.setHeader('Content-Type', 'text/html; charset=utf-8');
+      res.setHeader('X-Cache', cacheStatus);
       try { res.removeHeader('X-Frame-Options'); } catch(e) {}
       try { res.removeHeader('Content-Security-Policy'); } catch(e) {}
       res.status(statusCode || 200).send(out);
+    };
+
+    const serveStaleIfAny = () => {
+      const entry = mapCache.get(key);
+      if (entry && entry.html) {
+        res.setHeader('Warning', '110 - "Response is stale"');
+        return sanitizeAndSendHtml(entry.html, 200, 'STALE');
+      }
+      res.status(502).send('Map unavailable');
+    };
+
+    const cached = mapCache.get(key);
+    const now = Date.now();
+    if (cached && (now - cached.ts) < MAP_TTL_MS) {
+      return sanitizeAndSendHtml(cached.html, 200, 'HIT');
     }
 
-    // Try to fetch latest cached map from Flask API
-    fetchUrl(base + '/api/map', 'text/html,application/xhtml+xml', (err, code, html) => {
-      if (!err && code === 200 && html) {
-        return sendHtml(html, 200);
+    if (inflightMap.has(key)) {
+      try {
+        const html = await inflightMap.get(key);
+        return sanitizeAndSendHtml(html, 200, cached ? 'STALE-REFRESH' : 'MISS');
+      } catch (_) {
+        return serveStaleIfAny();
       }
-      // If not available, trigger analysis to generate and retry
-      fetchUrl(base + '/api/analyze', 'application/json', (_e2) => {
-        // After triggering, attempt map fetch again regardless of analyze response
-        fetchUrl(base + '/api/map', 'text/html,application/xhtml+xml', (e3, code2, html2) => {
-          if (!e3 && code2 === 200 && html2) return sendHtml(html2, 200);
-          console.error('proxy map unavailable after analyze');
-          res.status(502).send('Map unavailable');
+    }
+
+    const fetchText = (url, accept, tries = 2) => new Promise((resolve, reject) => {
+      const lib = url.startsWith('https') ? https : http;
+      const options = {
+        headers: {
+          'Accept': accept,
+          'Connection': 'keep-alive',
+          'User-Agent': 'AquaFlow-Node-Client/1.0'
+        },
+        timeout: 45000,
+        agent: url.startsWith('https') ? keepAliveHttpsAgent : keepAliveHttpAgent,
+      };
+      const attempt = (n) => {
+        const reqFlask = lib.get(url, options, (resp) => {
+          let data = '';
+          resp.on('data', (c) => { data += c.toString(); });
+          resp.on('end', () => {
+            if (resp.statusCode === 200 && data) return resolve(data);
+            if (n < tries) return setTimeout(() => attempt(n + 1), n * 500);
+            reject(new Error('bad_status_' + resp.statusCode));
+          });
         });
-      });
+        reqFlask.on('error', (err) => { if (n < tries) return setTimeout(() => attempt(n + 1), n * 500); reject(err); });
+        reqFlask.setTimeout(45000, () => { try { reqFlask.destroy(); } catch(_) {}; if (n < tries) return setTimeout(() => attempt(n + 1), n * 500); reject(new Error('timeout')); });
+      };
+      attempt(1);
     });
+
+    const inflight = (async () => {
+      try {
+        let html = await fetchText(base + '/api/map', 'text/html,application/xhtml+xml', 2);
+        if (!html) {
+          // trigger analysis and try again
+          try { await fetchText(base + '/api/analyze', 'application/json', 1); } catch(_) {}
+          html = await fetchText(base + '/api/map', 'text/html,application/xhtml+xml', 2);
+        }
+        mapCache.set(key, { html, ts: Date.now() });
+        return html;
+      } finally {
+        inflightMap.delete(key);
+      }
+    })();
+
+    inflightMap.set(key, inflight);
+
+    try {
+      const html = await inflight;
+      return sanitizeAndSendHtml(html, 200, cached ? 'STALE-REFRESH' : 'MISS');
+    } catch (e) {
+      console.error('proxy map unavailable after analyze', e && e.message);
+      return serveStaleIfAny();
+    }
   } catch (e) {
     console.error('proxy map fatal:', e);
     res.status(500).send('Map error');
