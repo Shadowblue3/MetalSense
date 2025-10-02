@@ -1,7 +1,7 @@
 <div class="page-header">
-    <h2 class="page-title">Water Quality Monitoring</h2>
+    <h2 class="page-title">Heavy Metal Pollution Monitoring</h2>
     <div class="sensor-count">
-        <i class="fas fa-tint"></i>
+        <i class="fas fa-microscope"></i>
         <span><%= sensors.length %> Active Sensors</span>
     </div>
 </div>
@@ -10,7 +10,7 @@
     <% sensors.forEach(sensor => { %>
     <div class="sensor-card <%= sensor.status %>">
         <div class="sensor-header">
-            <h3 class="sensor-location"><%= sensor.location %></h3>
+            <h3 class="sensor-location">Sensor <%= sensor["Sensor no"] %> - <%= sensor.location %></h3>
             <div class="sensor-status <%= sensor.status %>">
                 <i class="fas fa-circle"></i>
                 <span><%= sensor.status %></span>
@@ -26,16 +26,58 @@
             </div>
 
             <div class="reading-item">
-                <span class="reading-label">Turbidity</span>
-                <span class="reading-value <%= sensor.turbidity < 5 ? 'safe' : 'danger' %>">
-                    <%= sensor.turbidity %> NTU
+                <span class="reading-label">Electrical Conductivity (µS/cm)</span>
+                <span class="reading-value <%= sensor.EC < 500 ? 'safe' : 'danger' %>">
+                    <%= sensor.EC %>
                 </span>
             </div>
 
             <div class="reading-item">
-                <span class="reading-label">Bacterial Risk</span>
-                <span class="reading-value <%= sensor.bacterial === 'safe' ? 'safe' : sensor.bacterial === 'moderate' ? 'warning' : 'danger' %>">
-                    <%= sensor.bacterial %>
+                <span class="reading-label">Arsenic (As)</span>
+                <span class="reading-value <%= sensor.As <= sensor.Background_As ? 'safe' : 'danger' %>">
+                    <%= sensor.As %> (Bg: <%= sensor.Background_As %>)
+                </span>
+            </div>
+
+            <div class="reading-item">
+                <span class="reading-label">Cadmium (Cd)</span>
+                <span class="reading-value <%= sensor.Cd <= sensor.Background_Cd ? 'safe' : 'danger' %>">
+                    <%= sensor.Cd %> (Bg: <%= sensor.Background_Cd %>)
+                </span>
+            </div>
+
+            <div class="reading-item">
+                <span class="reading-label">Chromium (Cr)</span>
+                <span class="reading-value <%= sensor.Cr <= sensor.Background_Cr ? 'safe' : 'danger' %>">
+                    <%= sensor.Cr %> (Bg: <%= sensor.Background_Cr %>)
+                </span>
+            </div>
+
+            <div class="reading-item">
+                <span class="reading-label">Copper (Cu)</span>
+                <span class="reading-value <%= sensor.Cu <= sensor.Background_Cu ? 'safe' : 'danger' %>">
+                    <%= sensor.Cu %> (Bg: <%= sensor.Background_Cu %>)
+                </span>
+            </div>
+
+            <div class="reading-item">
+                <span class="reading-label">Lead (Pb)</span>
+                <span class="reading-value <%= sensor.Pb <= sensor.Background_Pb ? 'safe' : 'danger' %>">
+                    <%= sensor.Pb %> (Bg: <%= sensor.Background_Pb %>)
+                </span>
+            </div>
+
+            <div class="reading-item">
+                <span class="reading-label">Zinc (Zn)</span>
+                <span class="reading-value <%= sensor.Zn <= sensor.Background_Zn ? 'safe' : 'danger' %>">
+                    <%= sensor.Zn %> (Bg: <%= sensor.Background_Zn %>)
+                </span>
+            </div>
+
+            <div class="reading-item">
+                <span class="reading-label">Nickel (Ni)</span>
+                <span class="reading-value <%= sensor.Ni <= sensor.Background_Ni ? 'safe' : 'danger' %>">
+                    <%= sensor.Ni %> (Bg: <%= sensor.Background_Ni %>)
                 </span>
             </div>
         </div>
@@ -49,10 +91,10 @@
 
 <div class="water-trends">
     <div class="dashboard-card">
-        <h3 class="card-title">Water Quality Trends</h3>
+        <h3 class="card-title">Heavy Metal Pollution Trends</h3>
         <div class="trends-placeholder">
-            <i class="fas fa-chart-line"></i>
-            <p>Real-time monitoring data visualization</p>
+            <i class="fas fa-chart-bar"></i>
+            <p>Real-time index calculation and visualization</p>
         </div>
     </div>
 </div>
