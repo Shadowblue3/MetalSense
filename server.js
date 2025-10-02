@@ -1706,6 +1706,8 @@ app.get('/policies', requireLogin, requireRole(['government']), async (req, res)
       activeTab: 'policies',
       policies,
       created: req.query.created === '1',
+      updated: req.query.updated === '1',
+      deleted: req.query.deleted === '1',
       error: null
     });
   } catch (e) {
@@ -1716,6 +1718,8 @@ app.get('/policies', requireLogin, requireRole(['government']), async (req, res)
       activeTab: 'policies',
       policies: [],
       created: false,
+      updated: false,
+      deleted: false,
       error: 'Failed to load policies.'
     });
   }
@@ -1733,6 +1737,8 @@ app.post('/policies', requireLogin, requireRole(['government']), async (req, res
         activeTab: 'policies',
         policies,
         created: false,
+        updated: false,
+        deleted: false,
         error: 'Title and Description are required.'
       });
     }
@@ -1752,10 +1758,114 @@ app.post('/policies', requireLogin, requireRole(['government']), async (req, res
         activeTab: 'policies',
         policies,
         created: false,
+        updated: false,
+        deleted: false,
         error: 'Failed to create policy.'
       });
     } catch(_) {
       return res.status(500).send('Failed to create policy');
+    }
+  }
+});
+
+// Policy update (Government)
+app.post('/policies/:id/edit', requireLogin, requireRole(['government']), async (req, res) => {
+  try {
+    const id = req.params.id;
+    const { title, description } = req.body || {};
+    if (!title || !description) {
+      const language = req.query.lang || 'en';
+      const policies = await policyModel.find({}).sort({ createdAt: -1 }).lean();
+      return res.status(400).render('policies', {
+        title: 'Policies',
+        language,
+        activeTab: 'policies',
+        policies,
+        created: false,
+        updated: false,
+        deleted: false,
+        error: 'Title and Description are required for update.'
+      });
+    }
+    const updated = await policyModel.findByIdAndUpdate(id, {
+      $set: {
+        title: String(title).trim(),
+        description: String(description).trim()
+      }
+    });
+    if (!updated) {
+      const language = req.query.lang || 'en';
+      const policies = await policyModel.find({}).sort({ createdAt: -1 }).lean();
+      return res.status(404).render('policies', {
+        title: 'Policies',
+        language,
+        activeTab: 'policies',
+        policies,
+        created: false,
+        updated: false,
+        deleted: false,
+        error: 'Policy not found.'
+      });
+    }
+    return res.redirect('/policies?updated=1');
+  } catch (e) {
+    console.error('policies update error', e);
+    try {
+      const language = req.query.lang || 'en';
+      const policies = await policyModel.find({}).sort({ createdAt: -1 }).lean();
+      return res.status(500).render('policies', {
+        title: 'Policies',
+        language,
+        activeTab: 'policies',
+        policies,
+        created: false,
+        updated: false,
+        deleted: false,
+        error: 'Failed to update policy.'
+      });
+    } catch (_) {
+      return res.status(500).send('Failed to update policy');
+    }
+  }
+});
+
+// Policy delete (Government)
+app.post('/policies/:id/delete', requireLogin, requireRole(['government']), async (req, res) => {
+  try {
+    const id = req.params.id;
+    const del = await policyModel.findByIdAndDelete(id);
+    if (!del) {
+      const language = req.query.lang || 'en';
+      const policies = await policyModel.find({}).sort({ createdAt: -1 }).lean();
+      return res.status(404).render('policies', {
+        title: 'Policies',
+        language,
+        activeTab: 'policies',
+        policies,
+        created: false,
+        updated: false,
+        deleted: false,
+        error: 'Policy not found.'
+      });
+    }
+    return res.redirect('/policies?deleted=1');
+  } catch (e) {
+    console.error('policies delete error', e);
+    try {
+      const language = req.query.lang || 'en';
+      const policies = await policyModel.find({}).sort({ createdAt: -1 }).lean();
+      return res.status(500).render('policies', {
+        title: 'Policies',
+        language,
+        activeTab: 'policies',
+        policies,
+        created: false,
+        updated: false,
+        deleted: false,
+        error: 'Failed to delete policy.'
+      });
+    } catch (_) {
+      return res.status(500).send('Failed to delete policy');
     }
   }
 });
@@ -1854,10 +1964,25 @@ app.get('/ngo/policies', requireLogin, requireRole(['ngo']), async (req, res) =>
   try {
     const language = req.query.lang || 'en';
     const policies = await policyModel.find({}).sort({ createdAt: -1 }).lean();
-    res.render('ngo-policies', { title: 'Policies', language, activeTab: 'ngo-policies', policies });
+    res.render('ngo-policies', { title: 'Policies', language, activeTab: 'ngo-policies', policies, toggled: req.query.toggled === '1' });
   } catch (e) {
     console.error('ngo policies error', e);
-    res.render('ngo-policies', { title: 'Policies', language: req.query.lang || 'en', activeTab: 'ngo-policies', policies: [] });
+    res.render('ngo-policies', { title: 'Policies', language: req.query.lang || 'en', activeTab: 'ngo-policies', policies: [], toggled: false });
+  }
+});
+
+// NGO: toggle policy resolved state
+app.post('/ngo/policies/:id/toggle', requireLogin, requireRole(['ngo']), async (req, res) => {
+  try {
+    const id = req.params.id;
+    const doc = await policyModel.findById(id);
+    if (!doc) return res.redirect('/ngo/policies');
+    const newVal = !(doc.resolved === true);
+    await policyModel.findByIdAndUpdate(id, { $set: { resolved: newVal } });
+    return res.redirect('/ngo/policies?toggled=1');
+  } catch (e) {
+    console.error('ngo policy toggle error', e);
+    return res.redirect('/ngo/policies');
   }
 });
 
@@ -1878,7 +2003,8 @@ app.get('/ngo/tasks', requireLogin, requireRole(['ngo']), async (req, res) => {
       language,
       activeTab: 'ngo-tasks',
       ngoCode,
-      tasks
+      tasks,
+      toggled: req.query.toggled === '1'
     });
   } catch (e) {
     console.error('ngo tasks error', e);
@@ -1888,8 +2014,32 @@ app.get('/ngo/tasks', requireLogin, requireRole(['ngo']), async (req, res) => {
       language,
       activeTab: 'ngo-tasks',
       ngoCode: null,
-      tasks: []
+      tasks: [],
+      toggled: false
     });
+  }
+});
+
+// NGO: Toggle assigned task completion status
+app.post('/ngo/tasks/:id/toggle', requireLogin, requireRole(['ngo']), async (req, res) => {
+  try {
+    const taskId = req.params.id;
+    const meId = String(req.session.user && req.session.user.ngoId || '');
+    const me = meId ? await ngoModel.findById(meId).lean() : null;
+    const ngoCode = me && me.id ? me.id : null;
+    if (!ngoCode) return res.redirect('/ngo/tasks');
+
+    const task = await ngoTaskModel.findById(taskId).lean();
+    if (!task || String(task.ngoId) !== String(ngoCode)) {
+      return res.redirect('/ngo/tasks');
+    }
+
+    const newStatus = task.status === 'completed' ? 'assigned' : 'completed';
+    await ngoTaskModel.findByIdAndUpdate(taskId, { $set: { status: newStatus } });
+    return res.redirect('/ngo/tasks?toggled=1');
+  } catch (e) {
+    console.error('ngo task toggle error', e);
+    return res.redirect('/ngo/tasks');
   }
 });
 

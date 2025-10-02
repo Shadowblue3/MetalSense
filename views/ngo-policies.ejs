@@ -5,8 +5,11 @@
 
 <section>
   <div class="card">
-    <div class="card-header">
+    <div class="card-header" style="display:flex; justify-content:space-between; align-items:center;">
       <h3 style="margin:0;">Policies</h3>
+      <% if (typeof toggled !== 'undefined' && toggled) { %>
+        <span style="color:#065f46; background:#d1fae5; border:1px solid #10b981; padding:4px 8px; border-radius:6px; font-size:0.9rem;">Status updated</span>
+      <% } %>
     </div>
     <div class="card-body">
       <% if (!policies || policies.length === 0) { %>
@@ -17,7 +20,12 @@
             <li style="border:1px solid #e5e7eb; border-radius:10px; padding:12px 14px; background:#fff;">
               <div style="display:flex; justify-content:space-between; gap:12px; align-items:flex-start; flex-wrap:wrap;">
                 <div style="flex:1 1 auto; min-width:260px;">
-                  <h4 style="margin:0 0 6px 0; font-size:1.05rem; color:#111827;"><%= p.title %></h4>
+                  <h4 style="margin:0 0 6px 0; font-size:1.05rem; color:#111827; display:flex; gap:8px; align-items:center;">
+                    <span><%= p.title %></span>
+                    <% if (p.resolved) { %>
+                      <span title="Resolved" style="color:#065f46; background:#d1fae5; border:1px solid #10b981; padding:2px 6px; border-radius:6px; font-size:0.8rem;">Resolved</span>
+                    <% } %>
+                  </h4>
                   <p style="white-space:pre-wrap; margin:0; color:#374151;"><%= p.description %></p>
                 </div>
                 <div style="flex:0 0 auto; min-width:220px; text-align:right; color:#6b7280; font-size:0.9rem;">
@@ -27,6 +35,20 @@
                     <div style="margin-top:4px;"><i class="far fa-user"></i> By: <%= p.createdBy %></div>
                   <% } %>
                 </div>
+              </div>
+
+              <div style="margin-top:10px; display:flex; gap:8px;">
+                <form action="/ngo/policies/<%= p._id %>/toggle" method="POST" style="display:inline;">
+                  <% if (p.resolved) { %>
+                    <button type="submit" style="padding:6px 10px; border:1px solid #93c5fd; border-radius:6px; background:#eff6ff; color:#1d4ed8; cursor:pointer;">
+                      <i class="far fa-undo-alt"></i> Mark Unresolved
+                    </button>
+                  <% } else { %>
+                    <button type="submit" style="padding:6px 10px; border:1px solid #86efac; border-radius:6px; background:#dcfce7; color:#166534; cursor:pointer;">
+                      <i class="far fa-check-circle"></i> Mark Resolved
+                    </button>
+                  <% } %>
+                </form>
               </div>
             </li>
           <% }); %>

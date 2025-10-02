@@ -4,9 +4,17 @@
       <div class="card">
         <div class="card-header" style="display:flex; align-items:center; justify-content:space-between;">
           <h2 style="margin:0;">Policies</h2>
-          <% if (created) { %>
-            <span style="color:#065f46; background:#d1fae5; border:1px solid #10b981; padding:4px 8px; border-radius:6px; font-size:0.9rem;">Saved</span>
-          <% } %>
+          <div style="display:flex; gap:8px; align-items:center;">
+            <% if (created) { %>
+              <span style="color:#065f46; background:#d1fae5; border:1px solid #10b981; padding:4px 8px; border-radius:6px; font-size:0.9rem;">Saved</span>
+            <% } %>
+            <% if (updated) { %>
+              <span style="color:#1f2937; background:#dbeafe; border:1px solid #60a5fa; padding:4px 8px; border-radius:6px; font-size:0.9rem;">Updated</span>
+            <% } %>
+            <% if (deleted) { %>
+              <span style="color:#7f1d1d; background:#fee2e2; border:1px solid #ef4444; padding:4px 8px; border-radius:6px; font-size:0.9rem;">Deleted</span>
+            <% } %>
+          </div>
         </div>
         <div class="card-body">
           <% if (error) { %>
@@ -33,6 +41,39 @@
                         <div style="margin-top:4px;"><i class="far fa-user"></i> By: <%= p.createdBy %></div>
                       <% } %>
                     </div>
+                  </div>
+
+                  <div style="flex:1 1 100%; margin-top:10px; display:flex; gap:8px; flex-wrap:wrap;">
+                    <button type="button" onclick="toggleEdit('<%= p._id %>')"
+                            style="padding:6px 10px; border:1px solid #93c5fd; border-radius:6px; background:#eff6ff; color:#1d4ed8; cursor:pointer;">
+                      <i class="far fa-edit"></i> Edit
+                    </button>
+                    <form action="/policies/<%= p._id %>/delete" method="POST" onsubmit="return confirm('Delete this policy? This action cannot be undone.');" style="display:inline;">
+                      <button type="submit" style="padding:6px 10px; border:1px solid #fecaca; border-radius:6px; background:#fee2e2; color:#b91c1c; cursor:pointer;">
+                        <i class="far fa-trash-alt"></i> Delete
+                      </button>
+                    </form>
+                  </div>
+
+                  <div id="edit-<%= p._id %>" style="display:none; margin-top:10px; border-top:1px solid #e5e7eb; padding-top:10px;">
+                    <form action="/policies/<%= p._id %>/edit" method="POST" style="display:flex; flex-direction:column; gap:10px;">
+                      <div>
+                        <label for="title-<%= p._id %>" style="display:block; font-weight:600; margin-bottom:6px;">Policy Title</label>
+                        <input id="title-<%= p._id %>" name="title" type="text" required maxlength="200" value="<%= p.title %>"
+                               style="width:100%; padding:8px 10px; border:1px solid #d1d5db; border-radius:8px; outline:none;" />
+                      </div>
+                      <div>
+                        <label for="desc-<%= p._id %>" style="display:block; font-weight:600; margin-bottom:6px;">Description</label>
+                        <textarea id="desc-<%= p._id %>" name="description" required maxlength="10000" rows="8"
+                                  style="width:100%; min-height:160px; padding:8px 10px; border:1px solid #d1d5db; border-radius:8px; resize:vertical; outline:none;"><%= p.description %></textarea>
+                      </div>
+                      <div style="display:flex; justify-content:flex-end; gap:8px;">
+                        <button type="button" onclick="toggleEdit('<%= p._id %>')" style="padding:8px 12px; border:1px solid #d1d5db; border-radius:8px; background:#fff; color:#374151; cursor:pointer;">Cancel</button>
+                        <button type="submit" style="padding:8px 12px; border:none; border-radius:8px; background:#2563eb; color:white; cursor:pointer;">
+                          <i class="fas fa-save"></i> Update
+                        </button>
+                      </div>
+                    </form>
                   </div>
                 </li>
               <% }); %>
@@ -70,4 +111,15 @@
       </div>
     </div>
   </div>
+<script>
+  function toggleEdit(id) {
+    var el = document.getElementById('edit-' + id);
+    if (!el) return;
+    if (el.style.display === 'none' || !el.style.display) {
+      el.style.display = 'block';
+    } else {
+      el.style.display = 'none';
+    }
+  }
+</script>
 </section>
