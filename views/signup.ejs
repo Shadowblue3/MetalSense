@@ -395,12 +395,124 @@
             return true;
         });
 
+        // Geolocation-based autofill for General Public
+        function slugify(name) {
+            return name ? name.toString().trim().toLowerCase()
+                .replace(/[^a-z0-9\s-]/g, '')
+                .replace(/\s+/g, '-') : '';
+        }
+
+        function setSelectByTextOrSlug(selectEl, targetName, allowCreate) {
+            if (!selectEl || !targetName) return false;
+            const targetSlug = slugify(targetName);
+            const opts = Array.from(selectEl.options);
+            let match = opts.find(opt => opt.value === targetSlug);
+            if (!match) {
+                match = opts.find(opt => opt.text.trim().toLowerCase() === targetName.trim().toLowerCase());
+            }
+            if (match) {
+                selectEl.value = match.value;
+                return true;
+            }
+            if (allowCreate) {
+                const opt = document.createElement('option');
+                opt.value = targetSlug || targetName.trim();
+                opt.textContent = targetName.trim();
+                selectEl.appendChild(opt);
+                selectEl.value = opt.value;
+                return true;
+            }
+            return false;
+        }
+
+        async function attemptLocationAutofill() {
+            try {
+                if (currentUserType !== 'public') return; // only for general public
+                if (!('geolocation' in navigator)) return;
+
+                const position = await new Promise((resolve, reject) => {
+                    navigator.geolocation.getCurrentPosition(resolve, reject, {
+                        enableHighAccuracy: false,
+                        timeout: 10000,
+                        maximumAge: 300000
+                    });
+                });
+
+                const { latitude, longitude } = position.coords;
+
+                const url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${encodeURIComponent(latitude)}&lon=${encodeURIComponent(longitude)}`;
+                const res = await fetch(url, { headers: { 'Accept': 'application/json' } });
+                if (!res.ok) throw new Error('Reverse geocoding failed');
+                const data = await res.json();
+                const addr = data.address || {};
+
+                const stateName = addr.state || addr.region || addr.state_name;
+                const districtName = addr.state_district || addr.district || addr.county || addr.city_district;
+                // Try to determine the smallest reasonable locality for Village/Area
+                let localityName = (
+                    addr.village || addr.hamlet || addr.suburb || addr.neighbourhood || addr.residential ||
+                    addr.quarter || addr.borough || addr.ward || addr.locality || addr.municipality ||
+                    addr.town || addr.city
+                );
+                // Fallbacks if not found above
+                if (!localityName && data && data.name) {
+                    localityName = data.name;
+                }
+                if (!localityName && data && data.display_name) {
+                    try {
+                        const parts = String(data.display_name).split(',').map(s => s.trim());
+                        const blacklist = new Set([
+                            (stateName || '').toLowerCase(),
+                            (districtName || '').toLowerCase(),
+                            (addr.country || '').toLowerCase(),
+                            (addr.country_code || '').toLowerCase()
+                        ]);
+                        localityName = parts.find(p => p && !blacklist.has(p.toLowerCase()) && p.length > 2) || null;
+                    } catch(e) {}
+                }
+
+                const stateSelect = document.getElementById('publicState');
+                const districtSelect = document.getElementById('publicDistrict');
+                const villageSelect = document.getElementById('publicVillage');
+
+                // Set state if possible (match available options)
+                if (stateName && stateSelect) {
+                    const matched = setSelectByTextOrSlug(stateSelect, stateName, false);
+                    if (matched) {
+                        // Populate districts per the configured list
+                        updateDistricts('public');
+                    }
+                }
+
+                // Set district, creating option if not present in our static list
+                if (districtName && districtSelect) {
+                    setSelectByTextOrSlug(districtSelect, districtName, true);
+                }
+
+                // Set village/area by creating/selecting an option
+                if (localityName && villageSelect) {
+                    setSelectByTextOrSlug(villageSelect, localityName, true);
+                }
+
+                // Hide related errors if we auto-selected values
+                if (stateSelect && stateSelect.value) { const el = document.getElementById('publicStateError'); if (el) el.style.display = 'none'; }
+                if (districtSelect && districtSelect.value) { const el = document.getElementById('publicDistrictError'); if (el) el.style.display = 'none'; }
+                if (villageSelect && villageSelect.value) { const el = document.getElementById('publicVillageError'); if (el) el.style.display = 'none'; }
+
+            } catch (err) {
+                // Silently ignore if user denies permission or any error occurs
+                try { console.warn('Location autofill skipped:', err && err.message ? err.message : err); } catch(e) {}
+            }
+        }
+
         // Initialize
         (function init(){
             selectUserType('public');
             const drops = document.querySelectorAll('.water-drop');
             drops.forEach((drop, index) => { drop.style.animationDelay = `${index * 0.5}s`; });
             toggleSectionEnablement();
+            // Attempt to auto-fill location-based fields for General Public
+            setTimeout(() => { try { attemptLocationAutofill(); } catch(e) {} }, 0);
         })();
     </script>
 </body>
